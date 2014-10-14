@@ -24,7 +24,8 @@ int main(int argc, char **argv)
   hints.ai_family = AF_UNSPEC;
   hints.ai_socktype = SOCK_STREAM;
   hints.ai_flags = AI_PASSIVE; 	// use my IP
-  rv = getaddrinfo(NULL, PORTS, &hints, &servinfo);
+  printf("\n numero de port : %s", argv[1]);
+  rv = getaddrinfo(NULL, argv[1], &hints, &servinfo);
   
   if (rv != 0) 
   {
