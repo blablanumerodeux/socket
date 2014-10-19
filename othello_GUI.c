@@ -25,7 +25,7 @@
 /* Variables globales associées à l'interface graphique */
   GtkBuilder  *  p_builder   = NULL;
   GError      *  p_err       = NULL;
-   
+  MAXDATASIZE = 100;
 
 
 // Entetes des fonctions  
@@ -53,6 +53,9 @@ int get_score_J2(void);
 
 /* Fonction transformant coordonnees du damier graphique en indexes pour matrice du damier */
 void coord_to_indexes(const gchar *coord, int *col, int *lig);
+
+/* Fonction transformant indexes en coordonnees du damier graphique pour matrice du damier */
+void indexes_to_coord(int col, int lig, char *coord);
 
 /* Fonction appelee lors du clique sur une case du damier */
 static void coup_joueur(GtkWidget *p_case);
@@ -182,6 +185,13 @@ int get_score_J2(void)
   
 /* Fonction transformant coordonnees du damier graphique en indexes pour matrice du damier */
 void coord_to_indexes(const gchar *coord, int *col, int *lig)
+{
+  /***** TO DO *****/
+
+}
+
+/* Fonction transformant coordonnees du damier graphique en indexes pour matrice du damier */
+void indexes_to_coord(int col, int lig, char *coord)
 {
   /***** TO DO *****/
 
