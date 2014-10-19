@@ -12,7 +12,7 @@
 
 
 #define SERVEUR "127.0.0.1"
-#define PORTS "2058"
+#define PORTS "2058" //replaced by argv[1]
 
 int main(int argc, char **argv)
 {

@@ -12,7 +12,7 @@
 #include <signal.h>
 
 
-#define PORTS "2058"
+#define PORTS "2058"//replaced by argv[1]
 
 int main(int argc, char **argv)
 {
@@ -24,7 +24,8 @@ int main(int argc, char **argv)
   hints.ai_family = AF_UNSPEC;
   hints.ai_socktype = SOCK_STREAM;
   hints.ai_flags = AI_PASSIVE; 	// use my IP
-  printf("\n numero de port : %s", argv[1]);
+  printf("\nNumero de port : %s\n", argv[1]);
+  fflush(stdout);
   rv = getaddrinfo(NULL, argv[1], &hints, &servinfo);
   
   if (rv != 0) 
@@ -47,8 +48,8 @@ int main(int argc, char **argv)
       perror("server: bind");
       continue;
     }
-    
     break;
+    
   }
   
   if (p == NULL)
@@ -71,9 +72,17 @@ int main(int argc, char **argv)
     {
       close(sockfd);
       send(new_fd, "Hello!", 6, 0);
-      close(new_fd);
 
-      exit(0);
+    if((numbytes = recv(sockfd, buf, 100-1, 0)) == -1)
+    {
+      perror("recv");
+      exit(1);
+    }
+
+
+      //close(new_fd);
+
+      //exit(0);
     } 
   }
   
