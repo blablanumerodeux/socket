@@ -1,15 +1,16 @@
 
-
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
+#include <stdlib.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h>
-
+#include <netdb.h>
+#include <signal.h>
 #include <gtk/gtk.h>
 
+#define MAXDATASIZE = 100;
 
 
 /* Variables globales */
@@ -25,7 +26,6 @@
 /* Variables globales associées à l'interface graphique */
   GtkBuilder  *  p_builder   = NULL;
   GError      *  p_err       = NULL;
-  MAXDATASIZE = 100;
 
 
 // Entetes des fonctions  
@@ -308,7 +308,7 @@ static void clique_connect_serveur(GtkWidget *b)
   if (rv != 0) 
   {
     fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
-    return 1;
+    //return 1;
   }
   
   // Création  socket  et  attachement
@@ -326,13 +326,12 @@ static void clique_connect_serveur(GtkWidget *b)
       continue;
     }
     break;
-    
   }
   
   if (p == NULL)
   {
     fprintf(stderr, "server: failed to bind\n");
-    return 2;
+    //return 2;
   }
 
   freeaddrinfo(servinfo); 	// Libère structure
@@ -350,16 +349,14 @@ static void clique_connect_serveur(GtkWidget *b)
       close(sockfd);
       send(new_fd, "Hello!", 6, 0);
 
-    if((numbytes = recv(sockfd, buf, 100-1, 0)) == -1)
-    {
-      perror("recv");
-      exit(1);
-    }
+      if((numbytes = recv(sockfd, buf, 100-1, 0)) == -1)
+      {
+        perror("recv");
+        exit(1);
+      }
 
-
-    close(new_fd);
-
-    //exit(0);
+      close(new_fd);
+      //exit(0);
     } 
   }
   
