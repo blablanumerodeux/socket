@@ -10,7 +10,7 @@
 #include <signal.h>
 #include <gtk/gtk.h>
 
-#define MAXDATASIZE = 100;
+int MAXDATASIZE = 100;
 
 
 /* Variables globales */
