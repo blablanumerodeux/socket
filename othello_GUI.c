@@ -645,9 +645,10 @@ int main (int argc, char ** argv)
 
 
 /* le thread pour le main serveur (c'est lui qui lance les parties)*/
-void * mainServer(void * args)
+void * mainServer(void * argv)
 {
-	printf("\nici\n");
+	char ** args = argv;
+	printf("\nici%s \n", args[1]);
 	fflush(stdout);
-	execlp("./server.o", args, NULL);
+	execlp("./server.o", args[0], args[1], NULL);
 }
