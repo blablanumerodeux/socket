@@ -11,14 +11,14 @@
 #include <netdb.h>
 #include <signal.h>
 
-
 #define PORTS "2058"//replaced by argv[1]
 
 int main(int argc, char **argv)
 {
-  int sockfd, new_fd, rv, sin_size;
+  int sockfd, new_fd, rv, sin_size, numbytes; 
   struct addrinfo hints, *servinfo, *p;
   struct sockaddr their_adr;
+  char buf[100];
 
   memset(&hints, 0, sizeof(hints));
   hints.ai_family = AF_UNSPEC;
@@ -67,22 +67,20 @@ int main(int argc, char **argv)
   {
     sin_size = sizeof(their_adr);
     new_fd = accept(sockfd, &their_adr, &sin_size);
-    
     if(!fork())
     {
-      close(sockfd);
+      /*close(sockfd);*/
       send(new_fd, "Hello!", 6, 0);
 
-    if((numbytes = recv(sockfd, buf, 100-1, 0)) == -1)
-    {
-      perror("recv");
-      exit(1);
-    }
-
+      if((numbytes = recv(sockfd, buf, 100-1, 0)) == -1)
+      {
+        perror("recv");
+        exit(1);
+      }
 
       //close(new_fd);
 
-      //exit(0);
+      exit(0);
     } 
   }
   

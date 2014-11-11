@@ -8,7 +8,6 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h>
-#include <netdb.h>
 
 
 #define SERVEUR "127.0.0.1"
@@ -66,6 +65,9 @@ int main(int argc, char **argv)
   }
 
   printf("Message reçu : %s\n",buf);
+  printf("Envoie d'un message au serveur\n");
+
+  send(new_fd, "Hello!", 6, 0);
 
   close(sockfd);
 
