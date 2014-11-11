@@ -618,6 +618,8 @@ int main (int argc, char ** argv)
 
 			if(!fork())
 			{ 	
+				//je suis le pere 
+
 				/*pthread_t thread_main_server;*/
 				/*int res_thread_main_server = pthread_create (&thread_main_server, NULL, mainServer,argv);*/
 

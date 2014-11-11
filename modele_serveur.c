@@ -66,11 +66,23 @@ int main(int argc, char **argv)
 	while(1)
 	{
 		sin_size = sizeof(their_adr);
+		printf("waiting for a connexion");
+		fflush(stdout);
 		new_fd = accept(sockfd, &their_adr, &sin_size);
 		if(!fork())
 		{
-			/*close(sockfd);*/
-			send(new_fd, "Hello!", 6, 0);
+			//i am your father
+
+			close(sockfd);
+			send(new_fd, "Connexion established !", 23, 0);
+
+			//we need to create a new processus (or thread)  
+			//we also have to create another socket for sending info to the client
+			//the processus will loop infinitely till he recv a shutdown cmd or the client quit the game
+			//this processus is a game
+			
+			printf("waiting for an answer");
+			fflush(stdout);
 
 			if((numbytes = recv(sockfd, buf, 100-1, 0)) == -1)
 			{
@@ -78,7 +90,7 @@ int main(int argc, char **argv)
 				exit(1);
 			}
 
-			//close(new_fd);
+			close(new_fd);
 
 			exit(0);
 		} 
