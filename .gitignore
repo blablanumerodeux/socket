@@ -29,4 +29,5 @@
 *.hex
 
 #temp files 
-.swp
+*.swp
+

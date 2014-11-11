@@ -11,7 +11,6 @@
 #include <gtk/gtk.h>
 #include <pthread.h>
 #include <unistd.h>
-/*#include <X11/Xlib.h>*/
 
 int MAXDATASIZE = 100;
 
@@ -512,9 +511,6 @@ int main (int argc, char ** argv)
 		exit(1);
 	}
 
-
-	/*XInitThreads();*/
-
 	/* Initialisation de GTK+ */
 	gtk_init (& argc, & argv);
 
@@ -628,6 +624,8 @@ int main (int argc, char ** argv)
 				gtk_widget_show_all(p_win);
 				gtk_main();
 			}
+
+			//we launch the main server that will run as long as the GUI is running 
 			mainServer(argv);
 
 		}
@@ -650,5 +648,8 @@ void * mainServer(void * argv)
 	char ** args = argv;
 	printf("\nici%s \n", args[1]);
 	fflush(stdout);
+	
+	//we override the processe 
 	execlp("./server.o", args[0], args[1], NULL);
+
 }
