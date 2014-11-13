@@ -69,29 +69,20 @@ int main(int argc, char **argv)
 		printf("waiting for a connexion");
 		fflush(stdout);
 		new_fd = accept(sockfd, &their_adr, &sin_size);
+		
+		//we create a new processus
 		if(!fork())
 		{
 			//i am your father
-
+		}
+		else
+		{
+			//we stop receiving from the socket of the main server
 			close(sockfd);
-			send(new_fd, "Connexion established !", 23, 0);
 
-			//we need to create a new processus (or thread)  
-			//we also have to create another socket for sending info to the client
-			//the processus will loop infinitely till he recv a shutdown cmd or the client quit the game
-			//this processus is a game
-			
-			printf("waiting for an answer");
-			fflush(stdout);
-
-			if((numbytes = recv(sockfd, buf, 100-1, 0)) == -1)
-			{
-				perror("recv");
-				exit(1);
-			}
+			gameOn(new_fd);
 
 			close(new_fd);
-
 			exit(0);
 		} 
 	}
@@ -99,3 +90,32 @@ int main(int argc, char **argv)
 	exit(0);
 }
 
+void gameOn(int new_fd)
+{
+
+
+	//a process for the game server (the little one)
+	//this processe will only receive infos from the other client
+	//this processus will loop infinitely till he recv a shutdown cmd or the client quit the game
+	if(!fork())
+	{
+		//i am your father
+		if((numbytes = recv(sockfd, buf, 100-1, 0)) == -1)
+		{
+			perror("recv");
+			exit(1);
+		}
+	}
+	//and another to send request to the oponent server via the sockets info send on the first request
+	else
+	{
+		//here we can use the execlp with modele_client
+		//we create another socket for sending info to the client
+		send(new_fd, "Connexion established !", 23, 0);
+		printf("waiting for an answer");
+		fflush(stdout);
+	} 
+
+
+
+}
