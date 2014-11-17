@@ -64,6 +64,7 @@ int main(int argc, char **argv)
     exit(1);
   }
 
+  printf("Client");
   printf("Message reçu : %s\n",buf);
   printf("Envoie d'un message au serveur\n");
 

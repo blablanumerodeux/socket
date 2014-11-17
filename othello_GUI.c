@@ -619,6 +619,7 @@ int main (int argc, char ** argv)
 			if(!fork())
 			{ 	
 				//je suis le pere 
+				//I am your father
 
 				/*pthread_t thread_main_server;*/
 				/*int res_thread_main_server = pthread_create (&thread_main_server, NULL, mainServer,argv);*/
@@ -648,8 +649,8 @@ int main (int argc, char ** argv)
 void * mainServer(void * argv)
 {
 	char ** args = argv;
-	printf("\nici%s \n", args[1]);
-	fflush(stdout);
+	/*printf("\nici%s \n", args[1]);*/
+	/*fflush(stdout);*/
 
 	//we override the processe 
 	execlp("./server.o", args[0], args[1], NULL);

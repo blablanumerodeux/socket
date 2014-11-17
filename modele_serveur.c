@@ -27,6 +27,7 @@ int main(int argc, char **argv)
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_flags = AI_PASSIVE; 	// use my IP
+	printf("Serveur globale");
 	printf("\nNumero de port : %s\n", argv[1]);
 	fflush(stdout);
 	rv = getaddrinfo(NULL, argv[1], &hints, &servinfo);
