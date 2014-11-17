@@ -8,11 +8,10 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h>
-#include <netdb.h>
 
 
 #define SERVEUR "127.0.0.1"
-#define PORTS "2058"
+#define PORTS "2058" //replaced by argv[1]
 
 int main(int argc, char **argv)
 {
@@ -24,7 +23,7 @@ int main(int argc, char **argv)
   memset(&hints, 0, sizeof(hints));
   hints.ai_family = AF_UNSPEC;
   hints.ai_socktype = SOCK_STREAM;
-  rv = getaddrinfo(SERVEUR, PORTS, &hints, &servinfo);
+  rv = getaddrinfo(SERVEUR, argv[1], &hints, &servinfo);
 
   if(rv != 0) 
   {
@@ -66,6 +65,9 @@ int main(int argc, char **argv)
   }
 
   printf("Message reçu : %s\n",buf);
+  printf("Envoie d'un message au serveur\n");
+
+  send(new_fd, "Hello!", 6, 0);
 
   close(sockfd);
 
