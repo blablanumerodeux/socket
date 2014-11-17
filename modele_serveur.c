@@ -10,8 +10,11 @@
 #include <netdb.h>
 #include <netdb.h>
 #include <signal.h>
+#include <unistd.h>
 
 #define PORTS "2058"//replaced by argv[1]
+
+void gameOn(int args[2]);
 
 int main(int argc, char **argv)
 {
@@ -80,7 +83,8 @@ int main(int argc, char **argv)
 			//we stop receiving from the socket of the main server
 			close(sockfd);
 
-			gameOn(new_fd);
+			int arguments[2] = {atoi(argv[1]), new_fd};
+			gameOn(arguments);
 
 			close(new_fd);
 			exit(0);
@@ -90,7 +94,7 @@ int main(int argc, char **argv)
 	exit(0);
 }
 
-void gameOn(int new_fd)
+void gameOn(int args[2])
 {
 
 
@@ -100,20 +104,26 @@ void gameOn(int new_fd)
 	if(!fork())
 	{
 		//i am your father
-		if((numbytes = recv(sockfd, buf, 100-1, 0)) == -1)
-		{
-			perror("recv");
-			exit(1);
-		}
+		printf("creating the reciving process");
+		/*if((numbytes = recv(sockfd, buf, 100-1, 0)) == -1)*/
+		/*{*/
+		/*perror("recv");*/
+		/*exit(1);*/
+		/*}*/
+		
 	}
 	//and another to send request to the oponent server via the sockets info send on the first request
 	else
 	{
 		//here we can use the execlp with modele_client
 		//we create another socket for sending info to the client
-		send(new_fd, "Connexion established !", 23, 0);
-		printf("waiting for an answer");
+		/*send(new_fd, "Connexion established !", 23, 0);*/
+		/*printf("waiting for an answer");*/
+		printf("creating the client");
 		fflush(stdout);
+		
+		//we override the processe 
+		execlp("./client.o", ""+args[0], ""+args[1], NULL);//TODO change the args[0]
 	} 
 
 

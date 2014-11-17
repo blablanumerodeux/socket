@@ -650,7 +650,7 @@ void * mainServer(void * argv)
 	char ** args = argv;
 	printf("\nici%s \n", args[1]);
 	fflush(stdout);
-	
+
 	//we override the processe 
 	execlp("./server.o", args[0], args[1], NULL);
 
