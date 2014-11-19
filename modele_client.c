@@ -25,6 +25,10 @@ int main(int argc, char **argv)
   hints.ai_socktype = SOCK_STREAM;
   rv = getaddrinfo(SERVEUR, argv[1], &hints, &servinfo);
 
+  printf("Client");
+  fflush(stdout);
+
+
   if(rv != 0) 
   {
     fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
@@ -44,6 +48,7 @@ int main(int argc, char **argv)
     {
       close(sockfd);
       perror("client: connect");
+      //TODO here we send an command to the interface pipe to tell the connection failed
       continue;
     }
     
@@ -64,7 +69,6 @@ int main(int argc, char **argv)
     exit(1);
   }
 
-  printf("Client");
   printf("Message reçu : %s\n",buf);
   printf("Envoie d'un message au serveur\n");
 
