@@ -27,14 +27,14 @@ int main(int argc, char **argv)
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_flags = AI_PASSIVE; 	// use my IP
-	printf("Serveur globale");
+	printf("\nServeur globale\n");
 	printf("\nNumero de port : %s\n", argv[1]);
 	fflush(stdout);
 	rv = getaddrinfo(NULL, argv[1], &hints, &servinfo);
 
 	if (rv != 0) 
 	{
-		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
+		fprintf(stderr, "\ngetaddrinfo: %s\n", gai_strerror(rv));
 		return 1;
 	}
 
@@ -43,13 +43,13 @@ int main(int argc, char **argv)
 	{
 		if ((sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1)
 		{
-			perror("server: socket");
+			perror("\nserver: socket\n");
 			continue;
 		}
 		if (bind(sockfd, p->ai_addr, p->ai_addrlen) == -1)
 		{
 			close(sockfd);
-			perror("server: bind");
+			perror("\nserver: bind\n");
 			continue;
 		}
 		break;
@@ -58,7 +58,7 @@ int main(int argc, char **argv)
 
 	if (p == NULL)
 	{
-		fprintf(stderr, "server: failed to bind\n");
+		fprintf(stderr, "\nserver: failed to bind\n");
 		return 2;
 	}
 
@@ -70,7 +70,7 @@ int main(int argc, char **argv)
 	while(1)
 	{
 		sin_size = sizeof(their_adr);
-		printf("waiting for a connexion");
+		printf("\nwaiting for a connexion\n");
 		fflush(stdout);
 		new_fd = accept(sockfd, &their_adr, &sin_size);
 		
@@ -105,7 +105,7 @@ void gameOn(int args[2])
 	if(!fork())
 	{
 		//i am your father
-		printf("creating the reciving process");
+		printf("\ncreating the reciving process\n");
 		/*if((numbytes = recv(sockfd, buf, 100-1, 0)) == -1)*/
 		/*{*/
 		/*perror("recv");*/
@@ -120,7 +120,7 @@ void gameOn(int args[2])
 		//we create another socket for sending info to the client
 		/*send(new_fd, "Connexion established !", 23, 0);*/
 		/*printf("waiting for an answer");*/
-		printf("creating the client");
+		printf("\ncreating the client\n");
 		fflush(stdout);
 		
 		//we override the processe 

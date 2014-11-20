@@ -25,7 +25,7 @@ int main(int argc, char **argv)
   hints.ai_socktype = SOCK_STREAM;
   rv = getaddrinfo(SERVEUR, argv[1], &hints, &servinfo);
 
-  printf("Client");
+  printf("\nClient\n");
   fflush(stdout);
 
 
@@ -69,8 +69,8 @@ int main(int argc, char **argv)
     exit(1);
   }
 
-  printf("Message reçu : %s\n",buf);
-  printf("Envoie d'un message au serveur\n");
+  printf("\nMessage reçu : %s\n",buf);
+  printf("\nEnvoie d'un message au serveur\n");
 
   send(new_fd, "Hello!", 6, 0);
 

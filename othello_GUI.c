@@ -328,9 +328,9 @@ static void clique_connect_adversaire(GtkWidget *b)
 
 	}else {
 
-		printf("\nj'ecoute le pipe et je met a jour l'interface\n");
-		fflush(stdout);
-		exit(0);	
+		/*printf("\nj'ecoute le pipe et je met a jour l'interface\n");*/
+		/*fflush(stdout);*/
+		/*exit(0);	*/
 	}
 }
 
