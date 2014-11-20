@@ -27,9 +27,11 @@ int main(int argc, char **argv)
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_flags = AI_PASSIVE; 	// use my IP
+
 	printf("\nServeur globale\n");
 	printf("\nNumero de port : %s\n", argv[1]);
 	fflush(stdout);
+
 	rv = getaddrinfo(NULL, argv[1], &hints, &servinfo);
 
 	if (rv != 0) 
@@ -69,9 +71,11 @@ int main(int argc, char **argv)
 
 	while(1)
 	{
-		sin_size = sizeof(their_adr);
-		printf("\nwaiting for a connexion\n");
+
+		printf("\nWaiting for a connexion\n");
 		fflush(stdout);
+
+		sin_size = sizeof(their_adr);
 		new_fd = accept(sockfd, &their_adr, &sin_size);
 
 		//we need a variable to refuse the conexion in case I'm already in game (means a if statement) 
@@ -85,11 +89,12 @@ int main(int argc, char **argv)
 		else
 		{
 			//we stop receiving from the socket of the main server
+			//beacause the son don't need to access the main socket
 			close(sockfd);
 
 			int arguments[2] = {atoi(argv[1]), new_fd};
 
-			//instead of this we create the client and we send a cmd in the pipe to connect to the oponnent
+			//we respond to the oponnent and launch the game !!
 			gameOn(arguments);
 
 			close(new_fd);
@@ -109,30 +114,38 @@ void gameOn(int args[2])
 
 
 	//a process for the game server (the little one)
-	//this processe will only receive infos from the other client
 	//this processus will loop infinitely till he recv a shutdown cmd or the client quit the game
 	if(!fork())
 	{
 		//i am your father
-
+		printf("\ncreating the reciving process\n");
+		fflush(stdout);
 
 		if((numbytes = recv(sockfd, buf, 100-1, 0)) == -1)
 		{
 			perror("recv");
 			exit(1);
 		}
+		
 		//the first packet received can be a acknoledgment OR a demand of connexion
 		//we create the client ONLY IF it's a demande of connexion
-
+		
 		if (buf == "demande")
 		{
+			printf("\ncreating the client\n");
+			fflush(stdout);
+
 			execlp("./client.o", ""+args[0], ""+args[1], NULL);//TODO change the args[0]
-			printf("\ncreating the reciving process\n");
+		}
+		//else it's an acknoledgement 
+		else 
+		{
+			
+			printf("\nThe connexion is established\n");
+			fflush(stdout);
 		}
 
 	}
-
-	//TODO put this in a the IF statement in the father processe !!!!!
 
 	//and another to send request to the oponent server via the sockets info send on the first request
 	else
@@ -141,8 +154,6 @@ void gameOn(int args[2])
 		//we create another socket for sending info to the client
 		/*send(new_fd, "Connexion established !", 23, 0);*/
 		/*printf("waiting for an answer");*/
-		printf("\ncreating the client\n");
-		fflush(stdout);
 
 		//we override the processe 
 	} 

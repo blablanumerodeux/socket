@@ -310,23 +310,25 @@ static void clique_connect_adversaire(GtkWidget *b)
 {
 	/***** TO DO *****/
 
-	printf("\nClique salope !\n");
+	printf("\nCliqued !\n");
 	fflush(stdout);
 
 	//lancer un modele_client et ecouter sur un pipe nomme pour la MAJ de l'interface
 	if (!fork())
 	{
 		//je suis le pere 
-		printf("\nje lance un client\n");
+		printf("\nJe lance un client\n");
 		fflush(stdout);
 		if (execlp("./client.o", "client.o", "6666", NULL)==-1)
 		{
-			printf("\nExeclp ne marche pas\n");
+			printf("\nExeclp didn't work\n");
 			strerror(errno);
 			fflush(stdout);
 		}
 
-	}else {
+	}
+	else
+       	{
 
 		/*printf("\nj'ecoute le pipe et je met a jour l'interface\n");*/
 		/*fflush(stdout);*/
