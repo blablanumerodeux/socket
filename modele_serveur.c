@@ -73,11 +73,14 @@ int main(int argc, char **argv)
 		printf("\nwaiting for a connexion\n");
 		fflush(stdout);
 		new_fd = accept(sockfd, &their_adr, &sin_size);
-		
+
+		//we need a variable to refuse the conexion in case I'm already in game (means a if statement) 
 		//we create a new processus
 		if(!fork())
 		{
 			//i am your father
+			//for now we only accept one connection
+			break;
 		}
 		else
 		{
@@ -85,6 +88,8 @@ int main(int argc, char **argv)
 			close(sockfd);
 
 			int arguments[2] = {atoi(argv[1]), new_fd};
+
+			//instead of this we create the client and we send a cmd in the pipe to connect to the oponnent
 			gameOn(arguments);
 
 			close(new_fd);
@@ -92,9 +97,13 @@ int main(int argc, char **argv)
 		} 
 	}
 
+	printf("\nI do not wait for a connexion anymore\n");
+	fflush(stdout);
+
 	exit(0);
 }
 
+//this can be triggered from a pipe
 void gameOn(int args[2])
 {
 
@@ -105,14 +114,26 @@ void gameOn(int args[2])
 	if(!fork())
 	{
 		//i am your father
-		printf("\ncreating the reciving process\n");
-		/*if((numbytes = recv(sockfd, buf, 100-1, 0)) == -1)*/
-		/*{*/
-		/*perror("recv");*/
-		/*exit(1);*/
-		/*}*/
-		
+
+
+		if((numbytes = recv(sockfd, buf, 100-1, 0)) == -1)
+		{
+			perror("recv");
+			exit(1);
+		}
+		//the first packet received can be a acknoledgment OR a demand of connexion
+		//we create the client ONLY IF it's a demande of connexion
+
+		if (buf == "demande")
+		{
+			execlp("./client.o", ""+args[0], ""+args[1], NULL);//TODO change the args[0]
+			printf("\ncreating the reciving process\n");
+		}
+
 	}
+
+	//TODO put this in a the IF statement in the father processe !!!!!
+
 	//and another to send request to the oponent server via the sockets info send on the first request
 	else
 	{
@@ -122,9 +143,8 @@ void gameOn(int args[2])
 		/*printf("waiting for an answer");*/
 		printf("\ncreating the client\n");
 		fflush(stdout);
-		
+
 		//we override the processe 
-		execlp("./client.o", ""+args[0], ""+args[1], NULL);//TODO change the args[0]
 	} 
 
 
