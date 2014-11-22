@@ -1,30 +1,44 @@
 
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
+#include <pthread.h>
+#include <sys/ipc.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/select.h>
 #include <netinet/in.h>
 #include <netdb.h>
-#include <netdb.h>
 #include <signal.h>
-#include <gtk/gtk.h>
-#include <pthread.h>
 #include <unistd.h>
 #include <errno.h>
 
-int MAXDATASIZE = 100;
+#include <gtk/gtk.h>
 
+int MAXDATASIZE = 256;
 
 /* Variables globales */
 int damier[8][8];	// tableau associe au damier
-int couleur;		// 0 : pour noir, 1 : pour blanc
+int couleur;		// 0 : pour noir (J1), 1 : pour blanc (J2)
+int nbCoup;		// Nombre de coup joué
 
 int port;		// numero port passe a l'appel
 
-char *addr_j2, *port_j2;	// Info sur adversaire
+char *addr_j2, *port_j2;// Info sur adversaire
 
 
+/* *************** Ajout du S.Rovedakis **************
+
+pthread_t thr_id;	// Id du thread fils gerant connexion socket
+  
+  int sockfd, newsockfd=-1; // descripteurs de socket
+  int addr_size;	 // taille adresse
+  struct sockaddr *their_addr;	// structure pour stocker adresse adversaire
+
+  fd_set master, read_fds, write_fds;	// ensembles de socket pour toutes les sockets actives avec select
+  int fdmax;			// utilise pour select
+
+******************************************************* */
 
 /* Variables globales associées à l'interface graphique */
 GtkBuilder  *  p_builder   = NULL;
@@ -60,6 +74,33 @@ void coord_to_indexes(const gchar *coord, int *col, int *lig);
 /* Fonction transformant indexes en coordonnees du damier graphique pour matrice du damier */
 void indexes_to_coord(int col, int lig, char *coord);
 
+/* Fonction calculant les scores courants */
+void calcul_scores();
+
+/* Fonction d'encadrement de la droite vers la gauche */
+void encadrement_D_G(int col_piece, int lig_piece, int couleur_joueur);
+
+/* Fonction d'encadrement de la gauche vers la droite */
+void encadrement_G_D(int col_piece, int lig_piece, int couleur_joueur);
+
+/* Fonction d'encadrement de haut vers bas */
+void encadrement_H_B(int col_piece, int lig_piece, int couleur_joueur);
+
+/* Fonction d'encadrement de bas vers haut */
+void encadrement_B_H(int col_piece, int lig_piece, int couleur_joueur);
+
+/* Fonction d'encadrement diagonale vers Nord Est */
+void encadrement_NE(int col_piece, int lig_piece, int couleur_joueur);
+
+/* Fonction d'encadrement diagonale vers Sud Ouest */
+void encadrement_SO(int col_piece, int lig_piece, int couleur_joueur);
+
+/* Fonction d'encadrement diagonale vers Nord Ouest */
+void encadrement_NO(int col_piece, int lig_piece, int couleur_joueur);
+
+/* Fonction d'encadrement diagonale vers Sud Est */
+void encadrement_SE(int col_piece, int lig_piece, int couleur_joueur);
+
 /* Fonction appelee lors du clique sur une case du damier */
 static void coup_joueur(GtkWidget *p_case);
 
@@ -83,6 +124,9 @@ void affiche_fenetre_gagne(void);
 
 /* Fonction affichant boite de dialogue si partie perdue */
 void affiche_fenetre_perdu(void);
+
+/* Fonction affichant boite de dialogue si action impossible */
+void affiche_fenetre_action_impossible(void);
 
 /* Fonction appelee lors du clique du bouton Se connecter */
 static void clique_connect_serveur(GtkWidget *b);
@@ -187,18 +231,250 @@ int get_score_J2(void)
 	return atoi(c);
 }
 
-/* Fonction transformant coordonnees du damier graphique en indexes pour matrice du damier */
+/* Fonction transforme coordonnees du damier graphique en indexes pour matrice du damier */
 void coord_to_indexes(const gchar *coord, int *col, int *lig)
 {
-	/***** TO DO *****/
+	char *c;
+  
+	c=malloc(3*sizeof(char));
+  
+	c=strncpy(c, coord, 1);
+	c[1]='\0';
+  
+	if(strcmp(c, "A")==0)
+	{
+		*col=0;
+	}
+	if(strcmp(c, "B")==0)
+	{
+		*col=1;
+	}
+	if(strcmp(c, "C")==0)
+	{
+		*col=2;
+	}
+	if(strcmp(c, "D")==0)
+	{
+		*col=3;
+	}
+	if(strcmp(c, "E")==0)
+	{
+		*col=4;
+	}
+	if(strcmp(c, "F")==0)
+	{
+		*col=5;
+	}
+	if(strcmp(c, "G")==0)
+	{
+		*col=6;
+	}
+	if(strcmp(c, "H")==0)
+	{
+		*col=7;
+	}
 
+	*lig=atoi(coord+1)-1;
 }
 
-/* Fonction transformant coordonnees du damier graphique en indexes pour matrice du damier */
+/* Fonction transforme coordonnees du damier graphique en indexes pour matrice du damier */
 void indexes_to_coord(int col, int lig, char *coord)
 {
-	/***** TO DO *****/
+	char c;
 
+	if(col==0)
+	{
+		c='A';
+	}
+	if(col==1)
+	{
+		c='B';
+	}
+	if(col==2)
+	{
+		c='C';
+	}
+	if(col==3)
+	{
+		c='D';
+	}
+	if(col==4)
+	{
+		c='E';
+	}
+	if(col==5)
+	{
+		c='F';
+	}
+	if(col==6)
+	{
+		c='G';
+	}
+	if(col==7)
+	{
+		c='H';
+	}
+
+	sprintf(coord, "%c%d\0", c, lig+1);
+}
+
+/* Fonction calculant les scores courants */
+void calcul_scores(){
+	int i, j;
+	int score_J1 = 0, score_J2 = 0;
+
+	for(i = 0 ; i < 8 ; i++){
+		for(j = 0 ; j < 8 ; j++){
+			switch(damier[i][j]){
+				case 0:
+					score_J1++;
+				break;
+
+				case 1:
+					score_J2++;
+				break;								
+			}
+		}
+	}
+
+	set_score_J1(score_J1);
+	set_score_J2(score_J2);
+}
+
+/* Fonction d'encadrement de la droite vers la gauche */
+void encadrement_D_G(int col_piece, int lig_piece, int couleur_joueur){
+	int couleur_adverse = (couleur_joueur == 0) ? 1 : 0;
+	int i = col_piece - 1;
+
+	while (i > 0 && damier[i][lig_piece] == couleur_adverse){
+		i--;
+	}
+	if (i >= 0 && damier[i][lig_piece] == couleur_joueur && i != col_piece){
+		for (i = i + 1; i < col_piece; i++){
+			change_img_case(i, lig_piece, couleur_joueur);
+			damier[i][lig_piece] = couleur_joueur;
+		}
+	}
+}
+
+/* Fonction d'encadrement de la gauche vers la droite */
+void encadrement_G_D(int col_piece, int lig_piece, int couleur_joueur){
+	int couleur_adverse = (couleur_joueur == 0) ? 1 : 0;
+	int i = col_piece + 1;
+
+	while (i < 8 && damier[i][lig_piece] == couleur_adverse){
+		i++;
+	}
+	if (i <= 8 && damier[i][lig_piece] == couleur_joueur && i != col_piece){
+		for (i = i - 1; i > col_piece; i--){
+			change_img_case(i, lig_piece, couleur_joueur);
+			damier[i][lig_piece] = couleur_joueur;
+		}
+	}
+}
+
+/* Fonction d'encadrement de haut vers bas */
+void encadrement_H_B(int col_piece, int lig_piece, int couleur_joueur){
+	int couleur_adverse = (couleur_joueur == 0) ? 1 : 0;
+	int i = lig_piece + 1;
+
+	while (i < 8 && damier[col_piece][i] == couleur_adverse){
+		i++;
+	}
+	if (i <= 8 && damier[col_piece][i] == couleur_joueur && i != lig_piece){
+		for (i = i - 1; i > lig_piece; i--){
+			change_img_case(col_piece, i, couleur_joueur);
+			damier[col_piece][i] = couleur_joueur;
+		}
+	}
+}
+
+/* Fonction d'encadrement de bas vers haut */
+void encadrement_B_H(int col_piece, int lig_piece, int couleur_joueur){
+	int couleur_adverse = (couleur_joueur == 0) ? 1 : 0;
+	int i = col_piece - 1;
+
+	while (i > 0 && damier[col_piece][i] == couleur_adverse){
+		i--;
+	}
+	if (i >= 0 && damier[col_piece][i] == couleur_joueur && i != lig_piece){
+		for (i = i + 1; i < lig_piece; i++){
+			change_img_case(col_piece, i, couleur_joueur);
+			damier[col_piece][i] = couleur_joueur;
+		}
+	}
+}
+
+/* Fonction d'encadrement diagonale vers Nord Est */
+void encadrement_NE(int col_piece, int lig_piece, int couleur_joueur){
+	int couleur_adverse = (couleur_joueur == 0) ? 1 : 0;
+	int i = col_piece + 1;
+	int j = lig_piece - 1;
+
+	while (i < 8 && j > 0 && damier[i][j] == couleur_adverse){
+		i++;
+		j--;
+	}
+	if (i <= 8 && j >= 0 && damier[i][j] == couleur_joueur && i != col_piece && j != lig_piece){
+		for (i = i - 1, j = j + 1; i < col_piece, j < lig_piece; i--, j++){
+			change_img_case(i, j, couleur_joueur);
+			damier[i][j] = couleur_joueur;
+		}
+	}
+}
+
+/* Fonction d'encadrement diagonale vers Sud Ouest */
+void encadrement_SO(int col_piece, int lig_piece, int couleur_joueur){
+	int couleur_adverse = (couleur_joueur == 0) ? 1 : 0;
+	int i = col_piece - 1;
+	int j = lig_piece + 1;
+
+	while (i > 0 && j < 8 && damier[i][j] == couleur_adverse){
+		i--;
+		j++;
+	}
+	if (i >= 0 && j <= 8 && damier[i][j] == couleur_joueur && i != col_piece && j != lig_piece){
+		for (i = i + 1, j = j - 1; i < col_piece, j < lig_piece; i++, j--){
+			change_img_case(i, j, couleur_joueur);
+			damier[i][j] = couleur_joueur;
+		}
+	}
+}
+
+/* Fonction d'encadrement diagonale vers Nord Ouest */
+void encadrement_NO(int col_piece, int lig_piece, int couleur_joueur){
+	int couleur_adverse = (couleur_joueur == 0) ? 1 : 0;
+	int i = col_piece - 1;
+	int j = lig_piece - 1;
+
+	while (i > 0 && j > 0 && damier[i][j] == couleur_adverse){
+		i--;
+		j--;
+	}
+	if (i >= 0 && j >= 0 && damier[i][j] == couleur_joueur && i != col_piece && j != lig_piece){
+		for (i = i + 1, j = j + 1; i < col_piece, j < lig_piece; i++, j++){
+			change_img_case(i, j, couleur_joueur);
+			damier[i][j] = couleur_joueur;
+		}
+	}
+}
+
+/* Fonction d'encadrement diagonale vers Sud Est */
+void encadrement_SE(int col_piece, int lig_piece, int couleur_joueur){
+	int couleur_adverse = (couleur_joueur == 0) ? 1 : 0;
+	int i = col_piece + 1;
+	int j = lig_piece + 1;
+
+	while (i < 8 && j < 8 && damier[i][j] == couleur_adverse){
+		i++;
+		j++;
+	}
+	if (i <= 8 && j <= 8 && damier[i][j] == couleur_joueur && i != col_piece && j != lig_piece){
+		for (i = i - 1, j = j - 1; i < col_piece, j < lig_piece; i--, j--){
+			change_img_case(i, j, couleur_joueur);
+			damier[i][j] = couleur_joueur;
+		}
+	}
 }
 
 /* Fonction appelee lors du clique sur une case du damier */
@@ -210,8 +486,17 @@ static void coup_joueur(GtkWidget *p_case)
 	// Traduction coordonnees damier en indexes matrice damier
 	coord_to_indexes(gtk_buildable_get_name(GTK_BUILDABLE(gtk_bin_get_child(GTK_BIN(p_case)))), &col, &lig);
 
+	if(damier[col][lig] != -1){
+		affiche_fenetre_action_impossible();
+	}
+	else{
+		change_img_case(col, lig, couleur);
+		damier[col][lig] = couleur;
 
-	/***** TO DO *****/
+		/***** TO DO *****/
+
+		calcul_scores();
+	}
 
 }
 
@@ -291,6 +576,19 @@ void affiche_fenetre_perdu(void)
 	gtk_widget_destroy(dialog);
 }
 
+/* Fonction affichant boite de dialogue si action impossible */
+void affiche_fenetre_action_impossible(void)
+{
+	GtkWidget *dialog;
+
+	GtkDialogFlags flags = GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT;
+
+	dialog = gtk_message_dialog_new(GTK_WINDOW(gtk_builder_get_object(p_builder, "window1")), flags, GTK_MESSAGE_INFO, GTK_BUTTONS_CLOSE, "Action impossible.\n\n Veuillez sélectionner une case vide.", NULL);
+	gtk_dialog_run(GTK_DIALOG (dialog));
+
+	gtk_widget_destroy(dialog);
+}
+
 /* Fonction appelee lors du clique du bouton Se connecter */
 static void clique_connect_serveur(GtkWidget *b)
 {
@@ -305,34 +603,50 @@ void disable_button_statr(void)
 	gtk_widget_set_sensitive((GtkWidget *) gtk_builder_get_object (p_builder, "button_start"), FALSE);
 }
 
+
+/* ********************* Version de S.Rovedakis *********************
+
+// Fonction traitement signal bouton Demarrer partie
+static void clique_connect_adversaire(GtkWidget *b)
+{
+  if(newsockfd==-1)
+  {
+    // Deactivation bouton demarrer partie
+    gtk_widget_set_sensitive((GtkWidget *) gtk_builder_get_object (p_builder, "button_start"), FALSE);
+    
+    // Recuperation  adresse et port adversaire au format chaines caracteres
+    addr_j2=lecture_addr_adversaire();
+    port_j2=lecture_port_adversaire();
+    
+    printf("[Port joueur : %d] Adresse j2 lue : %s\n",port, addr_j2);
+    printf("[Port joueur : %d] Port j2 lu : %s\n", port, port_j2);
+
+    
+    pthread_kill(thr_id, SIGUSR1); 
+  }
+}
+
+********************************************************************* */
+
 /* Fonction appelee lors du clique du bouton Demarrer partie */
 static void clique_connect_adversaire(GtkWidget *b)
 {
-	/***** TO DO *****/
-
-	printf("\nCliqued !\n");
-	fflush(stdout);
-
-	//lancer un modele_client et ecouter sur un pipe nomme pour la MAJ de l'interface
 	if (!fork())
 	{
-		//je suis le pere 
-		printf("\nJe lance un client\n");
+		printf("\nUnable to contact the other player :( ...\n");
 		fflush(stdout);
-		if (execlp("./client.o", "client.o", "6666", NULL)==-1)
-		{
-			printf("\nExeclp didn't work\n");
-			strerror(errno);
-			fflush(stdout);
-		}
-
 	}
 	else
        	{
+		// Deactivation bouton demarrer partie
+		gtk_widget_set_sensitive((GtkWidget *) gtk_builder_get_object (p_builder, "button_start"), FALSE);
 
-		/*printf("\nj'ecoute le pipe et je met a jour l'interface\n");*/
-		/*fflush(stdout);*/
-		/*exit(0);	*/
+		// Recuperation  adresse et port adversaire au format chaines caracteres
+		addr_j2=lecture_addr_adversaire();
+		port_j2=lecture_port_adversaire();
+
+		printf("[Port joueur : %d] Adresse j2 lue : %s\n",port, addr_j2);
+		printf("[Port joueur : %d] Port j2 lu : %s\n", port, port_j2);
 	}
 }
 
@@ -523,6 +837,101 @@ void affich_joueur(char *login, char *adresse, char *port)
 	gtk_text_buffer_insert_at_cursor(GTK_TEXT_BUFFER(gtk_text_view_get_buffer(GTK_TEXT_VIEW(gtk_builder_get_object(p_builder, "textview_joueurs")))), joueur, strlen(joueur));
 }
 
+/* ************************************ Ajout S.Rovedakis **************************************************
+
+//* Fonction exécutée par le thread gérant les communications à travers la socket *\
+static void * f_com_socket(void *p_arg)
+{
+  int i, nbytes, col, lig;
+  
+  char buf[MAXDATASIZE], *tmp, *p_parse;
+  int len, bytes_sent, t_msg_recu;
+
+  sigset_t signal_mask;
+  int fd_signal;
+  
+  uint16_t type_msg, col_j2;
+  uint16_t ucol, ulig;
+  
+  //* Association descripteur au signal SIGUSR1 *\
+  sigemptyset(&signal_mask);
+  sigaddset(&signal_mask, SIGUSR1);
+    
+  if(sigprocmask(SIG_BLOCK, &signal_mask, NULL) == -1)
+  {
+    printf("[Pourt joueur %d] Erreur sigprocmask\n", port);
+    
+    return 0;
+  }
+    
+  fd_signal = signalfd(-1, &signal_mask, 0);
+    
+  if(fd_signal == -1)
+  {
+    printf("[port joueur %d] Erreur signalfd\n", port);
+
+    return 0;
+  }
+
+  //* Ajout descripteur du signal dans ensemble de descripteur utilisé avec fonction select *\
+  FD_SET(fd_signal, &master);
+  
+  if(fd_signal>fdmax)
+  {
+    fdmax=fd_signal;
+  }
+
+  
+  while(1)
+  {
+    read_fds=master;	// copie des ensembles
+    
+    if(select(fdmax+1, &read_fds, &write_fds, NULL, NULL)==-1)
+    {
+      perror("Problème avec select");
+      exit(4);
+    }
+    
+    printf("[Port joueur %d] Entree dans boucle for\n", port);
+    for(i=0; i<=fdmax; i++)
+    {
+      printf("[Port joueur %d] newsockfd=%d, iteration %d boucle for\n", port, newsockfd, i);
+
+      if(FD_ISSET(i, &read_fds))
+      {
+        if(i==fd_signal)
+        {
+          //* Cas où de l'envoie du signal par l'interface graphique pour connexion au joueur adverse *\
+          
+          
+          //***** TO DO *****\
+          
+        }
+      
+        if(i==sockfd)
+        { // Acceptation connexion adversaire
+	  
+	    
+          //***** TO DO *****\
+	    
+          gtk_widget_set_sensitive((GtkWidget *) gtk_builder_get_object (p_builder, "button_start"), FALSE);
+        }
+      }
+      else
+      { // Reception et traitement des messages du joueur adverse
+      
+      
+          //***** TO DO *****\
+
+	    
+      }
+    }
+  }
+  
+  return NULL;
+}
+
+**************************************************************************************************************** */
 
 int main (int argc, char ** argv)
 {
