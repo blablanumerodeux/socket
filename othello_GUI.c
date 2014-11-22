@@ -11,6 +11,7 @@
 #include <gtk/gtk.h>
 #include <pthread.h>
 #include <unistd.h>
+#include <errno.h>
 
 int MAXDATASIZE = 100;
 
@@ -294,9 +295,8 @@ void affiche_fenetre_perdu(void)
 static void clique_connect_serveur(GtkWidget *b)
 {
 	/***** TO DO *****/
-	//se connecter au serveur du joueur adverse
-	//ecouter
-	//si ok, alors mettre a jour l'interface et attendre le clique demarrer partie  
+	printf("\nClique connect serveur\n");
+	fflush(stdout);
 }
 
 /* Fonction desactivant bouton demarrer partie */
@@ -310,6 +310,30 @@ static void clique_connect_adversaire(GtkWidget *b)
 {
 	/***** TO DO *****/
 
+	printf("\nCliqued !\n");
+	fflush(stdout);
+
+	//lancer un modele_client et ecouter sur un pipe nomme pour la MAJ de l'interface
+	if (!fork())
+	{
+		//je suis le pere 
+		printf("\nJe lance un client\n");
+		fflush(stdout);
+		if (execlp("./client.o", "client.o", "6666", NULL)==-1)
+		{
+			printf("\nExeclp didn't work\n");
+			strerror(errno);
+			fflush(stdout);
+		}
+
+	}
+	else
+       	{
+
+		/*printf("\nj'ecoute le pipe et je met a jour l'interface\n");*/
+		/*fflush(stdout);*/
+		/*exit(0);	*/
+	}
 }
 
 /* Fonction desactivant les cases du damier */
@@ -615,10 +639,12 @@ int main (int argc, char ** argv)
 				}  
 			}
 
+			change_img_case(0,0,0);
 
 			if(!fork())
 			{ 	
 				//je suis le pere 
+				//I am your father
 
 				/*pthread_t thread_main_server;*/
 				/*int res_thread_main_server = pthread_create (&thread_main_server, NULL, mainServer,argv);*/
@@ -648,9 +674,9 @@ int main (int argc, char ** argv)
 void * mainServer(void * argv)
 {
 	char ** args = argv;
-	printf("\nici%s \n", args[1]);
-	fflush(stdout);
-	
+	/*printf("\nici%s \n", args[1]);*/
+	/*fflush(stdout);*/
+
 	//we override the processe 
 	execlp("./server.o", args[0], args[1], NULL);
 
