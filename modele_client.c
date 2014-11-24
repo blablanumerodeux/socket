@@ -1,6 +1,3 @@
-
-/*********** MODELE CLIENT TCP  **************/
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -8,10 +5,12 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h>
-
+#include <errno.h>
 
 #define SERVEUR "127.0.0.1"
 #define PORTS "2058" //replaced by argv[1]
+
+int port;
 
 int main(int argc, char **argv)
 {
@@ -27,6 +26,8 @@ int main(int argc, char **argv)
 
 	printf("\nClient\n");
 	fflush(stdout);
+	
+	port = atoi(argv[2]);
 
 	if(rv != 0) 
 	{
@@ -62,20 +63,34 @@ int main(int argc, char **argv)
 
 	freeaddrinfo(servinfo); 	// Libère structure
 	
-	//TODO review all after this 
+	/*if((numbytes = recv(sockfd, buf, 100-1, 0)) == -1)*/
+	/*{*/
+	/*perror("recv");*/
+	/*exit(1);*/
+	/*}*/
+
+	/*printf("\nClient : Message reçu : %s\n",buf);*/
+	printf("\nClient : Envoie d'un message au serveur\n");
+	fflush(stdout);
+
+	char portInChar[6]; 
+	sprintf(portInChar, "%d", port);
 	
-	if((numbytes = recv(sockfd, buf, 100-1, 0)) == -1)
+	char message[30];
+	strcpy(message, "demande,");
+	strcat(message, portInChar);
+	
+	//if its a demande send this 
+	if (strcmp(argv[3], "0")==0)
 	{
-		perror("recv");
-		exit(1);
+		send(sockfd, message, strlen(message), 0);
+	}
+	//else send this 
+	else if (strcmp(argv[3], "1")==0)
+	{
+		send(sockfd, "ack", 7, 0);
 	}
 
-	printf("\nMessage reçu : %s\n",buf);
-	printf("\nEnvoie d'un message au serveur\n");
-
-	send(new_fd, "Hello!", 6, 0);
-
 	close(sockfd);
-
 	exit(0);
 }

@@ -1,6 +1,3 @@
-
-/******* MODELE SERVEUR TCP  **************/
-
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -8,11 +5,13 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h>
-#include <netdb.h>
 #include <signal.h>
 #include <unistd.h>
+#include <errno.h>
 
 #define PORTS "2058"//replaced by argv[1]
+
+int port; 
 
 void gameOn(int args[2]);
 
@@ -28,8 +27,9 @@ int main(int argc, char **argv)
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_flags = AI_PASSIVE; 	// use my IP
 
-	printf("\nServeur globale\n");
-	printf("\nNumero de port : %s\n", argv[1]);
+	printf("\nServer : Serveur globale\n");
+	printf("\nServer : Numero de port : %s\n", argv[1]);
+	port=atoi(argv[1]);
 	fflush(stdout);
 
 	rv = getaddrinfo(NULL, argv[1], &hints, &servinfo);
@@ -72,11 +72,14 @@ int main(int argc, char **argv)
 	while(1)
 	{
 
-		printf("\nWaiting for a connexion\n");
+		printf("\nServer : Waiting for a connexion\n");
 		fflush(stdout);
 
 		sin_size = sizeof(their_adr);
 		new_fd = accept(sockfd, &their_adr, &sin_size);
+		
+		printf("\nServer : Connection incomming\n");
+		fflush(stdout);
 
 		//we need a variable to refuse the conexion in case I'm already in game (means a if statement) 
 		//we create a new processus
@@ -84,15 +87,20 @@ int main(int argc, char **argv)
 		{
 			//i am your father
 			//for now we only accept one connection
+			//we should use the select methode of the socket
+			//we quit the while
 			break;
 		}
 		else
 		{
 			//we stop receiving from the socket of the main server
-			//beacause the son don't need to access the main socket
+			//because the son don't need to access the main socket
 			close(sockfd);
 
 			int arguments[2] = {atoi(argv[1]), new_fd};
+
+			/*printf("\nServer : new_fd = \"%d\"\n",new_fd);*/
+			/*fflush(stdout);*/
 
 			//we respond to the oponnent and launch the game !!
 			gameOn(arguments);
@@ -102,62 +110,75 @@ int main(int argc, char **argv)
 		} 
 	}
 
-	printf("\nI do not wait for a connexion anymore\n");
+	printf("\nServer : I do not wait for a connexion anymore\n");
 	fflush(stdout);
 
 	exit(0);
 }
 
-//this can be triggered from a pipe
 void gameOn(int args[2])
 {
 
+	int numbytes; 
+	char buf[100];
 
-	//a process for the game server (the little one)
-	//this processus will loop infinitely till he recv a shutdown cmd or the client quit the game
-	if(!fork())
+	/*printf("\nServer : new_fd = \"%d\"\n",args[1]);*/
+	/*fflush(stdout);*/
+
+	printf("\nServer : Creating the reciving process \n");
+	fflush(stdout);
+
+	//We recv the first message from the oponent
+	if((numbytes = recv(args[1], buf, 100-1, 0)) == -1)
 	{
-		//i am your father
-		printf("\ncreating the reciving process\n");
+		perror("recv");
+		exit(1);
+	}
+	
+	/*printf("\nServer : Message recved : %s\n", buf);*/
+	/*fflush(stdout);*/
+
+	//the first packet received can be a acknoledgment OR a demande of connexion
+	//we create the client ONLY IF it's a demande of connexion
+	buf[numbytes] = '\0';	
+	printf("\nServer : messageReceived : %s\n", buf);
+
+	char* token = strtok (buf,",");	
+	char* cmd = token;
+	token = strtok(NULL, buf);
+	char* portOponent = token;
+	token = strtok(NULL, buf);
+
+	printf("\nServer : cmd : %s\n", cmd);
+	printf("\nServer : portOponent : %s\n", portOponent);
+	fflush(stdout);
+	
+	if (strcmp(cmd, "demande")==0)
+	{
+		printf("\nServer : Received a demande of connection\n");
+		printf("\nServer : Creating the client\n");
+		fflush(stdout);
+		char portInChar[6]; 
+		sprintf(portInChar, "%d", port);
+		if (execlp("./client.o", "client.o", portOponent, portInChar, "1", NULL))
+                {
+                        printf("\nServer : Execlp didn't work\n");
+                        strerror(errno);
+                        fflush(stdout);
+                }
+	}
+	//else it's an acknoledgement 
+	else if (strcmp(cmd, "ack")==0)
+	{
+		printf("\nServer : Received an ack of connection\n");
+		printf("\nServer : The connexion is established\n");
 		fflush(stdout);
 
-		if((numbytes = recv(sockfd, buf, 100-1, 0)) == -1)
-		{
-			perror("recv");
-			exit(1);
-		}
-		
-		//the first packet received can be a acknoledgment OR a demand of connexion
-		//we create the client ONLY IF it's a demande of connexion
-		
-		if (buf == "demande")
-		{
-			printf("\ncreating the client\n");
-			fflush(stdout);
-
-			execlp("./client.o", ""+args[0], ""+args[1], NULL);//TODO change the args[0]
-		}
-		//else it's an acknoledgement 
-		else 
-		{
-			
-			printf("\nThe connexion is established\n");
-			fflush(stdout);
-		}
-
+		//we send a ack
 	}
-
-	//and another to send request to the oponent server via the sockets info send on the first request
-	else
+	else 
 	{
-		//here we can use the execlp with modele_client
-		//we create another socket for sending info to the client
-		/*send(new_fd, "Connexion established !", 23, 0);*/
-		/*printf("waiting for an answer");*/
-
-		//we override the processe 
-	} 
-
-
-
+		printf("\nServer : Wrong message : %s \n", buf);
+		fflush(stdout);
+	}
 }
