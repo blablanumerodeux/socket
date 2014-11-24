@@ -1,4 +1,3 @@
-
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -310,26 +309,31 @@ static void clique_connect_adversaire(GtkWidget *b)
 {
 	/***** TO DO *****/
 
-	printf("\nCliqued !\n");
+	char* portToConnect = lecture_port_adversaire();
+	printf("\nOthello : Cliqued ! port : %s \n", portToConnect);
 	fflush(stdout);
 
 	//lancer un modele_client et ecouter sur un pipe nomme pour la MAJ de l'interface
 	if (!fork())
 	{
-		//je suis le pere 
-		printf("\nJe lance un client\n");
+		//I am the father 
+		printf("\nOthello : Je lance un client \n");
 		fflush(stdout);
-		if (execlp("./client.o", "client.o", "6666", NULL)==-1)
+		
+		char portInChar[6]; 
+		sprintf(portInChar, "%d", port);
+		printf("\nOthello : sur le port %s\n", portInChar);
+		fflush(stdout);
+
+		if (execlp("./client.o", "client.o", portToConnect, portInChar, "0", NULL)==-1)
 		{
-			printf("\nExeclp didn't work\n");
+			printf("\nOthello : Execlp didn't work\n");
 			strerror(errno);
 			fflush(stdout);
 		}
-
 	}
 	else
        	{
-
 		/*printf("\nj'ecoute le pipe et je met a jour l'interface\n");*/
 		/*fflush(stdout);*/
 		/*exit(0);	*/
@@ -643,8 +647,7 @@ int main (int argc, char ** argv)
 
 			if(!fork())
 			{ 	
-				//je suis le pere 
-				//I am your father
+				//I am the father
 
 				/*pthread_t thread_main_server;*/
 				/*int res_thread_main_server = pthread_create (&thread_main_server, NULL, mainServer,argv);*/
@@ -652,10 +655,11 @@ int main (int argc, char ** argv)
 				gtk_widget_show_all(p_win);
 				gtk_main();
 			}
-
-			//we launch the main server that will run as long as the GUI is running 
-			mainServer(argv);
-
+			else
+			{
+				//we launch the main server that will run as long as the GUI is running 
+				mainServer(argv);
+			}
 		}
 		else
 		{
@@ -674,10 +678,12 @@ int main (int argc, char ** argv)
 void * mainServer(void * argv)
 {
 	char ** args = argv;
-	/*printf("\nici%s \n", args[1]);*/
-	/*fflush(stdout);*/
 
 	//we override the processe 
-	execlp("./server.o", args[0], args[1], NULL);
-
+	if (execlp("./server.o", "server.o", args[1], NULL))
+	{
+		printf("\nOthello : Execlp didn't work\n");
+		strerror(errno);
+		fflush(stdout);
+	}
 }
