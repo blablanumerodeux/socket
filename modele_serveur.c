@@ -141,7 +141,7 @@ void gameOn(int args[2])
 	//the first packet received can be a acknoledgment OR a demande of connexion
 	//we create the client ONLY IF it's a demande of connexion
 	buf[numbytes] = '\0';	
-	printf("\nServer : messageReceived : %s\n", buf);
+	/*printf("\nServer : messageReceived : %s\n", buf);*/
 
 	char* token = strtok (buf,",");	
 	char* cmd = token;
@@ -160,11 +160,12 @@ void gameOn(int args[2])
 		fflush(stdout);
 		char portInChar[6]; 
 		sprintf(portInChar, "%d", port);
+		//we send a ack
 		if (execlp("./client.o", "client.o", portOponent, portInChar, "1", NULL))
                 {
                         printf("\nServer : Execlp didn't work\n");
+			fflush(stdout);
                         strerror(errno);
-                        fflush(stdout);
                 }
 	}
 	//else it's an acknoledgement 
@@ -174,7 +175,19 @@ void gameOn(int args[2])
 		printf("\nServer : The connexion is established\n");
 		fflush(stdout);
 
-		//we send a ack
+		//now we can receive all the moves of the oponent
+		while (1)
+		{
+			if((numbytes = recv(args[1], buf, 100-1, 0)) == -1)
+			{
+				perror("recv");
+				exit(1);
+			}
+			buf[numbytes] = '\0';	
+			
+			printf("\nServer : messageReceived : %s\n", buf);
+			fflush(stdout);
+		}
 	}
 	else 
 	{

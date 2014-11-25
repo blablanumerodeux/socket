@@ -88,7 +88,13 @@ int main(int argc, char **argv)
 	//else send this 
 	else if (strcmp(argv[3], "1")==0)
 	{
-		send(sockfd, "ack", 7, 0);
+		send(sockfd, "ack", 3, 0);
+	}
+
+	//we now obey to the pipe messages
+	while(1)
+	{
+		
 	}
 
 	close(sockfd);
