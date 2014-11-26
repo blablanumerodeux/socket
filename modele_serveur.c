@@ -8,6 +8,7 @@
 #include <signal.h>
 #include <unistd.h>
 #include <errno.h>
+#include <fcntl.h>
 
 #define PORTS "2058"//replaced by argv[1]
 
@@ -175,18 +176,44 @@ void gameOn(int args[2])
 		printf("\nServer : The connexion is established\n");
 		fflush(stdout);
 
+		//we open a pipe to send commands to the gui
+		int descServerToGui;
+		char serverToGui[] = "serverToGui.fifo";
+		if((descServerToGui = open(serverToGui, O_WRONLY)) == -1) 
+		{
+			fprintf(stderr, "Impossible d'ouvrir l'entrée du tube nommé.\n");
+			perror("open");
+			exit(EXIT_FAILURE);
+		}
+
+		//with this we can notify the gui that the connection is established 
+		char chaineAEcrire[7] = "Bonjour";
+		write(descServerToGui, chaineAEcrire, 7);
+
 		//now we can receive all the moves of the oponent
 		while (1)
 		{
+			/*printf("\nServer : waiting for a message\n");*/
+			/*fflush(stdout);*/
+
 			if((numbytes = recv(args[1], buf, 100-1, 0)) == -1)
 			{
 				perror("recv");
 				exit(1);
 			}
 			buf[numbytes] = '\0';	
-			
-			printf("\nServer : messageReceived : %s\n", buf);
-			fflush(stdout);
+
+			if (numbytes>0)
+			{
+				printf("\nServer : message received : %s\n", buf);
+				fflush(stdout);
+				
+				//here we'll notify the gui about all the moves of the oponent
+				//and a lot more too...
+				//we can manipulate all the gui from here 
+				char chaineAEcrire[7] = "Bonjour";
+				write(descServerToGui, chaineAEcrire, 7);
+			}
 		}
 	}
 	else 

@@ -92,10 +92,10 @@ int main(int argc, char **argv)
 	}
 
 	//we now obey to the pipe messages
-	while(1)
-	{
+	/*while(1)*/
+	/*{*/
 		
-	}
+	/*}*/
 
 	close(sockfd);
 	exit(0);

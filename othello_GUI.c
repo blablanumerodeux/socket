@@ -11,6 +11,7 @@
 #include <pthread.h>
 #include <unistd.h>
 #include <errno.h>
+#include <fcntl.h>
 
 int MAXDATASIZE = 100;
 
@@ -107,8 +108,8 @@ void reset_liste_joueurs(void);
 /* Fonction permettant d'ajouter un joueur dans la liste des joueurs sur l'interface graphique */
 void affich_joueur(char *login, char *adresse, char *port);
 
-/**/
-void * mainServer();
+/*function that read pipe and modify the gui in funtion of what's read*/
+void * read_pipe_and_modify_gui();
 
 
 
@@ -645,20 +646,34 @@ int main (int argc, char ** argv)
 
 			change_img_case(0,0,0);
 
+			//here we create the two pipes we need to communicate between the gui the client and the server
+			char serverToGui[] = "serverToGui.fifo";
+                        if(mkfifo(serverToGui, S_IRUSR | S_IWUSR ) != 0)  
+                        {
+                                fprintf(stderr, "Impossible de créer le tube nommé.\n");
+                                exit(EXIT_FAILURE);
+                        }
+
 			if(!fork())
 			{ 	
 				//I am the father
 
-				/*pthread_t thread_main_server;*/
-				/*int res_thread_main_server = pthread_create (&thread_main_server, NULL, mainServer,argv);*/
+				//we launch a thread that will just read the pipe and modify the gui
+				pthread_t thread_read_pipe_and_modify_gui;
+				int desc_thread_read_pipe_and_modify_gui = pthread_create (&thread_read_pipe_and_modify_gui, NULL, read_pipe_and_modify_gui, argv);
 
 				gtk_widget_show_all(p_win);
 				gtk_main();
 			}
 			else
 			{
-				//we launch the main server that will run as long as the GUI is running 
-				mainServer(argv);
+				//we override the processe 
+				if (execlp("./server.o", "server.o", argv[1], NULL))
+				{
+					printf("\nOthello : Execlp didn't work\n");
+					strerror(errno);
+					fflush(stdout);
+				}
 			}
 		}
 		else
@@ -674,16 +689,22 @@ int main (int argc, char ** argv)
 }
 
 
-/* le thread pour le main serveur (c'est lui qui lance les parties)*/
-void * mainServer(void * argv)
+void * read_pipe_and_modify_gui()
 {
-	char ** args = argv;
+	int descServerToGui;	
+	char serverToGui[] = "serverToGui.fifo";
 
-	//we override the processe 
-	if (execlp("./server.o", "server.o", args[1], NULL))
-	{
-		printf("\nOthello : Execlp didn't work\n");
-		strerror(errno);
-		fflush(stdout);
+	char chaineALire[7];
+	if((descServerToGui = open(serverToGui, O_RDONLY)) == -1) 
+	{   
+		fprintf(stderr, "Impossible d'ouvrir la sortie du tube nommé.\n");
+		exit(EXIT_FAILURE);
 	}
+
+	read(descServerToGui, chaineALire, 7);
+	printf("\nOthello : cmd recved from pipe : %s\n", chaineALire);
+	fflush(stdout);
+
+	//in this thread we will execute functions like this one 
+	set_label_J1(chaineALire);
 }
