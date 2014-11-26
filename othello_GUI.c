@@ -14,7 +14,7 @@
 #include <fcntl.h>
 
 int MAXDATASIZE = 100;
-
+int descGuiToClient;
 
 /* Variables globales */
 int damier[8][8];	// tableau associe au damier
@@ -111,7 +111,8 @@ void affich_joueur(char *login, char *adresse, char *port);
 /*function that read pipe and modify the gui in funtion of what's read*/
 void * read_pipe_and_modify_gui();
 
-
+/*funtion that open the pipe and don't block the interface*/
+void * write_to_client();
 
 
 /* Fonction permettant de changer l'image d'une case du damier (indiqué par sa colonne et sa ligne) */
@@ -654,14 +655,26 @@ int main (int argc, char ** argv)
                                 exit(EXIT_FAILURE);
                         }
 
+			char guiToClient[] = "guiToClient.fifo";
+                        if(mkfifo(guiToClient, S_IRUSR | S_IWUSR ) != 0)  
+                        {
+                                fprintf(stderr, "Impossible de créer le tube nommé.\n");
+                                exit(EXIT_FAILURE);
+                        }
+
 			if(!fork())
 			{ 	
 				//I am the father
 
-				//we launch a thread that will just read the pipe and modify the gui
+				//we launch a thread that will just read the first pipe and modify the gui
 				pthread_t thread_read_pipe_and_modify_gui;
 				int desc_thread_read_pipe_and_modify_gui = pthread_create (&thread_read_pipe_and_modify_gui, NULL, read_pipe_and_modify_gui, argv);
 
+				//we launch a thread that will just write to the client to comunicate our position to the oponent
+				pthread_t thread_write_to_client;
+				int desc_thread_write_to_client = pthread_create (&thread_write_to_client, NULL, write_to_client, argv);
+
+				//init the interface
 				gtk_widget_show_all(p_win);
 				gtk_main();
 			}
@@ -707,4 +720,25 @@ void * read_pipe_and_modify_gui()
 
 	//in this thread we will execute functions like this one 
 	set_label_J1(chaineALire);
+}
+
+
+void * write_to_client()
+{
+
+	char guiToClient[] = "guiToClient.fifo";
+
+	//we also open the second pipe that will write to the client to communicate the move to the other player
+	//this funcion will block untill we have a client that open the pipe on read
+	if((descGuiToClient = open(guiToClient, O_WRONLY)) == -1) 
+	{
+		fprintf(stderr, "Impossible d'ouvrir l'entrée du tube nommé.\n");
+		perror("open");
+		exit(EXIT_FAILURE);
+	}
+
+	//test the pipe 
+	char chaineAEcrire[7] = "Bonjour";
+	write(descGuiToClient, chaineAEcrire, 7);
+
 }

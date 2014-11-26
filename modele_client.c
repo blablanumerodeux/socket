@@ -6,6 +6,7 @@
 #include <netinet/in.h>
 #include <netdb.h>
 #include <errno.h>
+#include <fcntl.h>
 
 #define SERVEUR "127.0.0.1"
 #define PORTS "2058" //replaced by argv[1]
@@ -94,7 +95,20 @@ int main(int argc, char **argv)
 	//we now obey to the pipe messages
 	/*while(1)*/
 	/*{*/
-		
+	int descGuiToClient;        
+	char guiToClient[] = "guiToClient.fifo";
+
+	char chaineALire[7];
+	if((descGuiToClient= open(guiToClient, O_RDONLY)) == -1) 
+	{   
+		fprintf(stderr, "Impossible d'ouvrir la sortie du tube nommé.\n");
+		exit(EXIT_FAILURE);
+	}   
+
+	read(descGuiToClient, chaineALire, 7); 
+	printf("\nClient : cmd recved from pipe : %s\n", chaineALire);
+	fflush(stdout);
+
 	/*}*/
 
 	close(sockfd);
