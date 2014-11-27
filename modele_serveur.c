@@ -28,10 +28,10 @@ int main(int argc, char **argv)
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_flags = AI_PASSIVE; 	// use my IP
 
-	printf("\nServer : Serveur globale\n");
-	printf("\nServer : Numero de port : %s\n", argv[1]);
+	/*printf("Server : Serveur globale\n");*/
+	/*printf("Server : Numero de port : %s\n", argv[1]);*/
+	/*fflush(stdout);*/
 	port=atoi(argv[1]);
-	fflush(stdout);
 
 	rv = getaddrinfo(NULL, argv[1], &hints, &servinfo);
 
@@ -73,14 +73,14 @@ int main(int argc, char **argv)
 	while(1)
 	{
 
-		printf("\nServer : Waiting for a connexion\n");
+		printf("Server : Waiting for a connexion\n");
 		fflush(stdout);
 
 		sin_size = sizeof(their_adr);
 		new_fd = accept(sockfd, &their_adr, &sin_size);
 		
-		printf("\nServer : Connection incomming\n");
-		fflush(stdout);
+		/*printf("\nServer : Connection incomming\n");*/
+		/*fflush(stdout);*/
 
 		//we need a variable to refuse the conexion in case I'm already in game (means a if statement) 
 		//we create a new processus
@@ -111,8 +111,8 @@ int main(int argc, char **argv)
 		} 
 	}
 
-	printf("\nServer : I do not wait for a connexion anymore\n");
-	fflush(stdout);
+	/*printf("\nServer : I do not wait for a connexion anymore\n");*/
+	/*fflush(stdout);*/
 
 	exit(0);
 }
@@ -126,8 +126,11 @@ void gameOn(int args[2])
 	/*printf("\nServer : new_fd = \"%d\"\n",args[1]);*/
 	/*fflush(stdout);*/
 
-	printf("\nServer : Creating the reciving process \n");
-	fflush(stdout);
+	/*printf("Server : Creating the reciving process \n");*/
+	/*fflush(stdout);*/
+	
+	/*printf("Server : waiting for info from the oponent\n");*/
+	/*fflush(stdout);*/
 
 	//We recv the first message from the oponent
 	if((numbytes = recv(args[1], buf, 100-1, 0)) == -1)
@@ -150,21 +153,21 @@ void gameOn(int args[2])
 	char* portOponent = token;
 	token = strtok(NULL, buf);
 
-	printf("\nServer : cmd : %s\n", cmd);
-	printf("\nServer : portOponent : %s\n", portOponent);
+	printf("Server : cmd : %s, port : %s\n", cmd, portOponent);
 	fflush(stdout);
 	
 	if (strcmp(cmd, "demande")==0)
 	{
-		printf("\nServer : Received a demande of connection\n");
-		printf("\nServer : Creating the client\n");
+		printf("Server : Received a demande of connection\n");
+		/*printf("Server : Creating the client\n");*/
 		fflush(stdout);
+
 		char portInChar[6]; 
 		sprintf(portInChar, "%d", port);
 		//we send a ack
 		if (execlp("./client.o", "client.o", portOponent, portInChar, "1", NULL))
                 {
-                        printf("\nServer : Execlp didn't work\n");
+                        printf("Server : Execlp didn't work\n");
 			fflush(stdout);
                         strerror(errno);
                 }
@@ -172,8 +175,8 @@ void gameOn(int args[2])
 	//else it's an acknoledgement 
 	else if (strcmp(cmd, "ack")==0)
 	{
-		printf("\nServer : Received an ack of connection\n");
-		printf("\nServer : The connexion is established\n");
+		printf("Server : Received an ack of connection\n");
+		/*printf("Server : The connexion is established\n");*/
 		fflush(stdout);
 
 		//we open a pipe to send commands to the gui
@@ -205,7 +208,7 @@ void gameOn(int args[2])
 
 			if (numbytes>0)
 			{
-				printf("\nServer : message received : %s\n", buf);
+				printf("Server : message received : %s, Bytes : %d\n", buf, numbytes);
 				fflush(stdout);
 				
 				//here we'll notify the gui about all the moves of the oponent
@@ -218,7 +221,7 @@ void gameOn(int args[2])
 	}
 	else 
 	{
-		printf("\nServer : Wrong message : %s \n", buf);
+		printf("Server : Wrong message : %s \n", buf);
 		fflush(stdout);
 	}
 }

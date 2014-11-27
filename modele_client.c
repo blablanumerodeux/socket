@@ -25,8 +25,8 @@ int main(int argc, char **argv)
 	hints.ai_socktype = SOCK_STREAM;
 	rv = getaddrinfo(SERVEUR, argv[1], &hints, &servinfo);
 
-	printf("\nClient\n");
-	fflush(stdout);
+	/*printf("Client\n");*/
+	/*fflush(stdout);*/
 	
 	port = atoi(argv[2]);
 
@@ -71,8 +71,8 @@ int main(int argc, char **argv)
 	/*}*/
 
 	/*printf("\nClient : Message reçu : %s\n",buf);*/
-	printf("\nClient : Envoie d'un message au serveur\n");
-	fflush(stdout);
+	/*printf("Client : Envoie d'un message au serveur\n");*/
+	/*fflush(stdout);*/
 
 	char portInChar[6]; 
 	sprintf(portInChar, "%d", port);
@@ -113,8 +113,10 @@ int main(int argc, char **argv)
 		}else if(nbBRead > 0)
 		{
 			chaineALire[nbBRead] = '\0'; 
-			printf("\nClient : cmd recved from pipe : %s : %d Bytes\n", chaineALire, (int) strlen(chaineALire));
+			printf("Client : cmd recved from pipe : %s : %d Bytes\n", chaineALire, (int) strlen(chaineALire));
 			fflush(stdout);
+
+			send(sockfd, "des coordonees", 14, 0);
 		}
 
 	}

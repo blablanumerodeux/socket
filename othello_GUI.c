@@ -312,19 +312,17 @@ static void clique_connect_adversaire(GtkWidget *b)
 	/***** TO DO *****/
 
 	char* portToConnect = lecture_port_adversaire();
-	printf("\nOthello : Cliqued ! port : %s \n", portToConnect);
-	fflush(stdout);
+	/*printf("Othello : Cliqued ! port : %s \n", portToConnect);*/
+	/*fflush(stdout);*/
 
 	//lancer un modele_client et ecouter sur un pipe nomme pour la MAJ de l'interface
 	if (!fork())
 	{
 		//I am the father 
-		printf("\nOthello : Je lance un client \n");
-		fflush(stdout);
 		
 		char portInChar[6]; 
 		sprintf(portInChar, "%d", port);
-		printf("\nOthello : sur le port %s\n", portInChar);
+		printf("Othello : Je lance un client sur le port %s\n", portInChar);
 		fflush(stdout);
 
 		if (execlp("./client.o", "client.o", portToConnect, portInChar, "0", NULL)==-1)
@@ -683,7 +681,7 @@ int main (int argc, char ** argv)
 				//we override the processe 
 				if (execlp("./server.o", "server.o", argv[1], NULL))
 				{
-					printf("\nOthello : Execlp didn't work\n");
+					printf("Othello : Execlp didn't work\n");
 					strerror(errno);
 					fflush(stdout);
 				}
@@ -725,7 +723,7 @@ void * read_pipe_and_modify_gui()
 		}else if(nbBRead > 0)
 		{
 			chaineALire[nbBRead] = '\0';
-			printf("\nOthello : cmd recved from pipe : %s : %d Bytes\n", chaineALire, (int) strlen(chaineALire));
+			printf("Othello : cmd recved from pipe : %s : %d Bytes\n", chaineALire, (int) strlen(chaineALire));
 			fflush(stdout);
 
 			//in this thread we will execute functions like this one 
