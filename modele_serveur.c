@@ -190,8 +190,8 @@ void gameOn(int args[2])
 		}
 
 		//with this we can notify the gui that the connection is established 
-		char chaineAEcrire[7] = "Bonjour";
-		write(descServerToGui, chaineAEcrire, 7);
+		/*char chaineAEcrire[7] = "Bonjour";*/
+		/*write(descServerToGui, chaineAEcrire, 7);*/
 
 		//now we can receive all the moves of the oponent
 		while (1)
@@ -199,6 +199,8 @@ void gameOn(int args[2])
 			/*printf("\nServer : waiting for a message\n");*/
 			/*fflush(stdout);*/
 
+			//we flush the buffer before refill it
+			memset(buf, 0, sizeof(buf));
 			if((numbytes = recv(args[1], buf, 100-1, 0)) == -1)
 			{
 				perror("recv");
@@ -214,8 +216,8 @@ void gameOn(int args[2])
 				//here we'll notify the gui about all the moves of the oponent
 				//and a lot more too...
 				//we can manipulate all the gui from here 
-				char chaineAEcrire[7] = "ReBonjo";
-				write(descServerToGui, chaineAEcrire, 7);
+				/*char chaineAEcrire[7] = "ReBonjo";*/
+				/*write(descServerToGui, chaineAEcrire, 7);*/
 			}
 		}
 	}

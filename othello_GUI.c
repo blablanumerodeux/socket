@@ -748,7 +748,7 @@ void * write_to_client()
 	}
 
 	//test the pipe 
-	char chaineAEcrire[7] = "Bonjour";
-	write(descGuiToClient, chaineAEcrire, 7);
+	/*char chaineAEcrire[7] = "Bonjour";*/
+	/*write(descGuiToClient, chaineAEcrire, 7);*/
 
 }
