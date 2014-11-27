@@ -6,6 +6,7 @@
 #include <netinet/in.h>
 #include <netdb.h>
 #include <errno.h>
+#include <fcntl.h>
 
 #define SERVEUR "127.0.0.1"
 #define PORTS "2058" //replaced by argv[1]
@@ -24,8 +25,8 @@ int main(int argc, char **argv)
 	hints.ai_socktype = SOCK_STREAM;
 	rv = getaddrinfo(SERVEUR, argv[1], &hints, &servinfo);
 
-	printf("\nClient\n");
-	fflush(stdout);
+	/*printf("Client\n");*/
+	/*fflush(stdout);*/
 	
 	port = atoi(argv[2]);
 
@@ -70,8 +71,8 @@ int main(int argc, char **argv)
 	/*}*/
 
 	/*printf("\nClient : Message reçu : %s\n",buf);*/
-	printf("\nClient : Envoie d'un message au serveur\n");
-	fflush(stdout);
+	/*printf("Client : Envoie d'un message au serveur\n");*/
+	/*fflush(stdout);*/
 
 	char portInChar[6]; 
 	sprintf(portInChar, "%d", port);
@@ -88,7 +89,36 @@ int main(int argc, char **argv)
 	//else send this 
 	else if (strcmp(argv[3], "1")==0)
 	{
-		send(sockfd, "ack", 7, 0);
+		send(sockfd, "ack", 3, 0);
+	}
+
+	int descGuiToClient;        
+	char guiToClient[] = "guiToClient.fifo";
+
+	if((descGuiToClient= open(guiToClient, O_RDONLY)) == -1) 
+	{   
+		fprintf(stderr, "Impossible d'ouvrir la sortie du tube nommé.\n");
+		exit(EXIT_FAILURE);
+	}   
+
+	//we now obey to the pipe messages
+	char chaineALire[7];
+	int nbBRead;
+	while(1)
+	{
+		if((nbBRead = read(descGuiToClient, chaineALire, 7-1)) == -1)
+		{
+			perror("read error : ");
+			exit(EXIT_FAILURE);
+		}else if(nbBRead > 0)
+		{
+			chaineALire[nbBRead] = '\0'; 
+			printf("Client : cmd recved from pipe : %s : %d Bytes\n", chaineALire, (int) strlen(chaineALire));
+			fflush(stdout);
+
+			send(sockfd, "des coordonees", 14, 0);
+		}
+
 	}
 
 	close(sockfd);
