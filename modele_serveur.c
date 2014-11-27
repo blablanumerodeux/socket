@@ -211,7 +211,7 @@ void gameOn(int args[2])
 				//here we'll notify the gui about all the moves of the oponent
 				//and a lot more too...
 				//we can manipulate all the gui from here 
-				char chaineAEcrire[7] = "Bonjour";
+				char chaineAEcrire[7] = "ReBonjo";
 				write(descServerToGui, chaineAEcrire, 7);
 			}
 		}

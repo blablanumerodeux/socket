@@ -707,19 +707,31 @@ void * read_pipe_and_modify_gui()
 	int descServerToGui;	
 	char serverToGui[] = "serverToGui.fifo";
 
-	char chaineALire[7];
 	if((descServerToGui = open(serverToGui, O_RDONLY)) == -1) 
 	{   
 		fprintf(stderr, "Impossible d'ouvrir la sortie du tube nommé.\n");
 		exit(EXIT_FAILURE);
 	}
 
-	read(descServerToGui, chaineALire, 7);
-	printf("\nOthello : cmd recved from pipe : %s\n", chaineALire);
-	fflush(stdout);
+	//
+	char chaineALire[7];
+	int nbBRead;
+	while(1)
+	{
+		if((nbBRead = read(descServerToGui, chaineALire, 7-1)) == -1)
+		{
+			perror("read error : ");
+			exit(EXIT_FAILURE);
+		}else if(nbBRead > 0)
+		{
+			chaineALire[nbBRead] = '\0';
+			printf("\nOthello : cmd recved from pipe : %s : %d Bytes\n", chaineALire, (int) strlen(chaineALire));
+			fflush(stdout);
 
-	//in this thread we will execute functions like this one 
-	set_label_J1(chaineALire);
+			//in this thread we will execute functions like this one 
+			set_label_J1(chaineALire);
+		}
+	}
 }
 
 
