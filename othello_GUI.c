@@ -157,6 +157,8 @@ void * read_pipe_and_modify_gui();
 void * write_to_client();
 
 
+
+
 /* Fonction permettant de changer l'image d'une case du damier (indiqué par sa colonne et sa ligne) */
 void change_img_case(int col, int lig, int couleur_j)
 {
@@ -485,10 +487,12 @@ static void coup_joueur(GtkWidget *p_case)
 	// Traduction coordonnees damier en indexes matrice damier
 	coord_to_indexes(gtk_buildable_get_name(GTK_BUILDABLE(gtk_bin_get_child(GTK_BIN(p_case)))), &col, &lig);
 
-	if(damier[col][lig] != -1){
+	if(damier[col][lig] != -1)
+	{
 		affiche_fenetre_action_impossible();
 	}
-	else{
+       	else
+	{
 		nbCoup++;
 		change_img_case(col, lig, couleur);
 		damier[col][lig] = couleur;
@@ -505,15 +509,39 @@ static void coup_joueur(GtkWidget *p_case)
 		encadrement_SO(col, lig, couleur);
 
 		calcul_scores();
+
+
+		//we send the movement to the other player
+		char index[4]; 
+		char ligInChar[2]; 
+		char colInChar[2]; 
+		memset(index, 0, sizeof(index));
+		sprintf(ligInChar, "%d", lig);
+		sprintf(colInChar, "%d", col);
+		strcat(index, colInChar);
+		strcat(index, ligInChar);
+		
+		/*printf("col : %s\n", colInChar);*/
+		/*fflush(stdout);*/
+		/*printf("lig : %s\n", ligInChar);*/
+		/*fflush(stdout);*/
+		printf("Othello : index : %s\n", index);
+		fflush(stdout);
+		write(descGuiToClient, index, 4);
+
 	}
+
 	
 	// Fin de jeu
-	if(nbCoup == 32){
+	if(nbCoup == 32)
+	{
 		if((couleur == 0 && get_score_J2() < get_score_J1()) ||
-		(couleur == 1 && get_score_J2() > get_score_J1())){
+		(couleur == 1 && get_score_J2() > get_score_J1()))
+		{
 			affiche_fenetre_gagne();
 		}
-		else{
+		else
+		{
 			affiche_fenetre_perdu();
 		}
 		gele_damier();
@@ -650,8 +678,6 @@ static void clique_connect_adversaire(GtkWidget *b)
 /* Fonction appelee lors du clique du bouton Demarrer partie */
 static void clique_connect_adversaire(GtkWidget *b)
 {
-	/***** TO DO *****/
-
 	char* portToConnect = lecture_port_adversaire();
 	/*printf("Othello : Cliqued ! port : %s \n", portToConnect);*/
 	/*fflush(stdout);*/
@@ -1142,7 +1168,6 @@ int main (int argc, char ** argv)
 	return EXIT_SUCCESS;
 }
 
-
 void * read_pipe_and_modify_gui()
 {
 	int descServerToGui;	
@@ -1170,11 +1195,16 @@ void * read_pipe_and_modify_gui()
 			fflush(stdout);
 
 			//in this thread we will execute functions like this one 
-			set_label_J1(chaineALire);
+			/*set_label_J1(chaineALire);*/
+			
+			/*printf("Othello : chaineALire[0] : %d\n",chaineALire[0] - '0');*/
+			/*fflush(stdout);*/
+			/*printf("Othello : chaineALire[1] : %d\n", chaineALire[1] - '0');*/
+			/*fflush(stdout);*/
+			change_img_case(chaineALire[0] - '0',chaineALire[1] - '0', 1);
 		}
 	}
 }
-
 
 void * write_to_client()
 {
@@ -1193,5 +1223,5 @@ void * write_to_client()
 	//test the pipe 
 	/*char chaineAEcrire[7] = "Bonjour";*/
 	/*write(descGuiToClient, chaineAEcrire, 7);*/
-
 }
+
