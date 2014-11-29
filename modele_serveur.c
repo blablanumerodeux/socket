@@ -165,12 +165,20 @@ void gameOn(int args[2])
 		char portInChar[6]; 
 		sprintf(portInChar, "%d", port);
 		//we send a ack
-		if (execlp("./client.o", "client.o", portOponent, portInChar, "1", NULL))
-                {
-                        printf("Server : Execlp didn't work\n");
-			fflush(stdout);
-                        strerror(errno);
-                }
+		if (fork())
+		{
+			if (execlp("./client.o", "client.o", portOponent, portInChar, "1", NULL))
+			{
+				printf("Server : Execlp didn't work\n");
+				fflush(stdout);
+				strerror(errno);
+			}
+		}
+		else
+		{
+			/*printf("\n");*/
+			/*fflush(stdout);*/
+		}
 	}
 	//else it's an acknoledgement 
 	else if (strcmp(cmd, "ack")==0)
@@ -179,51 +187,57 @@ void gameOn(int args[2])
 		/*printf("Server : The connexion is established\n");*/
 		fflush(stdout);
 
-		//we open a pipe to send commands to the gui
-		int descServerToGui;
-		char serverToGui[] = "serverToGui.fifo";
-		if((descServerToGui = open(serverToGui, O_WRONLY)) == -1) 
-		{
-			fprintf(stderr, "Impossible d'ouvrir l'entrée du tube nommé.\n");
-			perror("open");
-			exit(EXIT_FAILURE);
-		}
 
-		//with this we can notify the gui that the connection is established 
-		/*char chaineAEcrire[7] = "Bonjour";*/
-		/*write(descServerToGui, chaineAEcrire, 7);*/
-
-		//now we can receive all the moves of the oponent
-		while (1)
-		{
-			/*printf("\nServer : waiting for a message\n");*/
-			/*fflush(stdout);*/
-
-			//we flush the buffer before refill it
-			memset(buf, 0, sizeof(buf));
-			if((numbytes = recv(args[1], buf, 100-1, 0)) == -1)
-			{
-				perror("recv");
-				exit(1);
-			}
-			buf[numbytes] = '\0';	
-
-			if (numbytes>0)
-			{
-				printf("Server : message received : %s, Bytes : %d\n", buf, numbytes);
-				fflush(stdout);
-				
-				//here we'll notify the gui about all the moves of the oponent
-				//and a lot more too...
-				//we can manipulate all the gui from here 
-				/*char chaineAEcrire[7] = "ReBonjo";*/
-				/*write(descServerToGui, chaineAEcrire, 7);*/
-			}
-		}
 	}
 	else 
 	{
 		printf("Server : Wrong message : %s \n", buf);
 		fflush(stdout);
+		//send a message to the interface and exit properly 
+		exit(0);
+	}
+
+
+	printf("Server : Connected\n");
+	fflush(stdout);
+
+	//we open a pipe to send commands to the gui
+	int descServerToGui;
+	char serverToGui[] = "serverToGui.fifo";
+	if((descServerToGui = open(serverToGui, O_WRONLY)) == -1) 
+	{
+		fprintf(stderr, "Impossible d'ouvrir l'entrée du tube nommé.\n");
+		perror("open");
+		exit(EXIT_FAILURE);
+	}
+
+	//with this we can notify the gui that the connection is established 
+	/*char chaineAEcrire[7] = "Bonjour";*/
+	/*write(descServerToGui, chaineAEcrire, 7);*/
+	//now we can receive all the moves of the oponent
+	while (1)
+	{
+		/*printf("\nServer : waiting for a message\n");*/
+		/*fflush(stdout);*/
+
+		//we flush the buffer before refill it
+		if((numbytes = recv(args[1], buf, 100-1, 0)) == -1)
+		{
+			perror("recv");
+			exit(1);
+		}
+		if (numbytes>0)
+		{
+			buf[numbytes] = '\0';	
+			printf("Server : message received : %s, Bytes : %d\n", buf, numbytes);
+			fflush(stdout);
+
+			//here we'll notify the gui about all the moves of the oponent
+			//and a lot more too...
+			//we can manipulate all the gui from here 
+			/*char chaineAEcrire[7] = "ReBonjo";*/
+			write(descServerToGui, buf, strlen(buf));
+			memset(buf, 0, sizeof(buf));
+		}
 	}
 }

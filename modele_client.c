@@ -116,7 +116,18 @@ int main(int argc, char **argv)
 			printf("Client : cmd recved from pipe : %s : %d Bytes\n", chaineALire, (int) strlen(chaineALire));
 			fflush(stdout);
 
-			send(sockfd, "des coordonees", 14, 0);
+			/*printf("\nServer : messageReceived : %s\n", buf);*/
+
+			/*char* token = strtok (chaineALire,",");*/
+			/*char* cmd = token;*/
+			/*token = strtok(NULL, chaineALire);*/
+			/*if (strcmp(cmd, "1")==0)*/
+			/*{*/
+			/*char* portOponent = token;*/
+			/*token = strtok(NULL, buf);*/
+			/*}*/
+
+			send(sockfd, chaineALire, strlen(chaineALire), 0);
 		}
 
 	}
