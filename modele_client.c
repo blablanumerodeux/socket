@@ -102,32 +102,32 @@ int main(int argc, char **argv)
 	}   
 
 	//we now obey to the pipe messages
-	char chaineALire[7];
+	char stringToRead[7];
 	int nbBRead;
 	while(1)
 	{
-		if((nbBRead = read(descGuiToClient, chaineALire, 7-1)) == -1)
+		if((nbBRead = read(descGuiToClient, stringToRead, 7-1)) == -1)
 		{
 			perror("read error : ");
 			exit(EXIT_FAILURE);
 		}else if(nbBRead > 0)
 		{
-			chaineALire[nbBRead] = '\0'; 
-			printf("Client : cmd recved from pipe : %s : %d Bytes\n", chaineALire, (int) strlen(chaineALire));
+			stringToRead[nbBRead] = '\0'; 
+			printf("Client : cmd recved from pipe : %s : %d Bytes\n", stringToRead, (int) strlen(stringToRead));
 			fflush(stdout);
 
 			/*printf("\nServer : messageReceived : %s\n", buf);*/
 
-			/*char* token = strtok (chaineALire,",");*/
+			/*char* token = strtok (stringToRead,",");*/
 			/*char* cmd = token;*/
-			/*token = strtok(NULL, chaineALire);*/
+			/*token = strtok(NULL, stringToRead);*/
 			/*if (strcmp(cmd, "1")==0)*/
 			/*{*/
 			/*char* portOponent = token;*/
 			/*token = strtok(NULL, buf);*/
 			/*}*/
 
-			send(sockfd, chaineALire, strlen(chaineALire), 0);
+			send(sockfd, stringToRead, strlen(stringToRead), 0);
 		}
 
 	}
