@@ -156,7 +156,8 @@ void * read_pipe_and_modify_gui();
 /*funtion that open the pipe and don't block the interface*/
 void * write_to_client();
 
-
+/*function to cast char to int*/
+int ctoi(char c);
 
 
 /* Fonction permettant de changer l'image d'une case du damier (indiqué par sa colonne et sa ligne) */
@@ -171,10 +172,12 @@ void change_img_case(int col, int lig, int couleur_j)
 	if(couleur_j)
 	{ // image pion blanc
 		gtk_image_set_from_file(GTK_IMAGE(gtk_builder_get_object(p_builder, coord)), "UI_Glade/case_blanc.png");
+		damier[col][lig] = 1;
 	}
 	else
 	{ // image pion noir
 		gtk_image_set_from_file(GTK_IMAGE(gtk_builder_get_object(p_builder, coord)), "UI_Glade/case_noir.png");
+		damier[col][lig] = 0;
 	}
 }
 
@@ -338,8 +341,8 @@ void calcul_scores(){
 		}
 	}
 
-	set_score_J1(score_J1);
-	set_score_J2(score_J2);
+	set_score_J1(score_J2);
+	set_score_J2(score_J1);
 }
 
 /* Fonction d'encadrement de la droite vers la gauche */
@@ -353,7 +356,6 @@ void encadrement_D_G(int col_piece, int lig_piece, int couleur_joueur){
 	if (i >= 0 && damier[i][lig_piece] == couleur_joueur && i != col_piece){
 		for (i = i + 1; i < col_piece; i++){
 			change_img_case(i, lig_piece, couleur_joueur);
-			damier[i][lig_piece] = couleur_joueur;
 		}
 	}
 }
@@ -369,7 +371,6 @@ void encadrement_G_D(int col_piece, int lig_piece, int couleur_joueur){
 	if (i <= 8 && damier[i][lig_piece] == couleur_joueur && i != col_piece){
 		for (i = i - 1; i > col_piece; i--){
 			change_img_case(i, lig_piece, couleur_joueur);
-			damier[i][lig_piece] = couleur_joueur;
 		}
 	}
 }
@@ -385,7 +386,6 @@ void encadrement_H_B(int col_piece, int lig_piece, int couleur_joueur){
 	if (i <= 8 && damier[col_piece][i] == couleur_joueur && i != lig_piece){
 		for (i = i - 1; i > lig_piece; i--){
 			change_img_case(col_piece, i, couleur_joueur);
-			damier[col_piece][i] = couleur_joueur;
 		}
 	}
 }
@@ -401,7 +401,6 @@ void encadrement_B_H(int col_piece, int lig_piece, int couleur_joueur){
 	if (i >= 0 && damier[col_piece][i] == couleur_joueur && i != lig_piece){
 		for (i = i + 1; i < lig_piece; i++){
 			change_img_case(col_piece, i, couleur_joueur);
-			damier[col_piece][i] = couleur_joueur;
 		}
 	}
 }
@@ -419,7 +418,6 @@ void encadrement_NE(int col_piece, int lig_piece, int couleur_joueur){
 	if (i <= 8 && j >= 0 && damier[i][j] == couleur_joueur && i != col_piece && j != lig_piece){
 		for (i = i - 1, j = j + 1; i < col_piece, j < lig_piece; i--, j++){
 			change_img_case(i, j, couleur_joueur);
-			damier[i][j] = couleur_joueur;
 		}
 	}
 }
@@ -437,7 +435,6 @@ void encadrement_SO(int col_piece, int lig_piece, int couleur_joueur){
 	if (i >= 0 && j <= 8 && damier[i][j] == couleur_joueur && i != col_piece && j != lig_piece){
 		for (i = i + 1, j = j - 1; i < col_piece, j < lig_piece; i++, j--){
 			change_img_case(i, j, couleur_joueur);
-			damier[i][j] = couleur_joueur;
 		}
 	}
 }
@@ -455,7 +452,6 @@ void encadrement_NO(int col_piece, int lig_piece, int couleur_joueur){
 	if (i >= 0 && j >= 0 && damier[i][j] == couleur_joueur && i != col_piece && j != lig_piece){
 		for (i = i + 1, j = j + 1; i < col_piece, j < lig_piece; i++, j++){
 			change_img_case(i, j, couleur_joueur);
-			damier[i][j] = couleur_joueur;
 		}
 	}
 }
@@ -473,7 +469,6 @@ void encadrement_SE(int col_piece, int lig_piece, int couleur_joueur){
 	if (i <= 8 && j <= 8 && damier[i][j] == couleur_joueur && i != col_piece && j != lig_piece){
 		for (i = i - 1, j = j - 1; i < col_piece, j < lig_piece; i--, j--){
 			change_img_case(i, j, couleur_joueur);
-			damier[i][j] = couleur_joueur;
 		}
 	}
 }
@@ -491,11 +486,10 @@ static void coup_joueur(GtkWidget *p_case)
 	{
 		affiche_fenetre_action_impossible();
 	}
-       	else
+   	else
 	{
 		nbCoup++;
 		change_img_case(col, lig, couleur);
-		damier[col][lig] = couleur;
 
 		// Appel des fonctions d'encadrement
 		encadrement_D_G(col, lig, couleur);
@@ -510,25 +504,25 @@ static void coup_joueur(GtkWidget *p_case)
 
 		calcul_scores();
 
-
 		//we send the movement to the other player
-		char index[4]; 
-		char ligInChar[2]; 
-		char colInChar[2]; 
-		memset(index, 0, sizeof(index));
+		char message[5];
+		strcpy(message, "c-");
+				
+		char position[5];
+		char ligInChar[2];
+		char colInChar[2];
+		
+		memset(position, 0, sizeof(position));
+		
 		sprintf(ligInChar, "%d", lig);
 		sprintf(colInChar, "%d", col);
-		strcat(index, colInChar);
-		strcat(index, ligInChar);
+		strcat(position, colInChar);
+		strcat(position, ligInChar);
 		
-		/*printf("col : %s\n", colInChar);*/
-		/*fflush(stdout);*/
-		/*printf("lig : %s\n", ligInChar);*/
-		/*fflush(stdout);*/
-		printf("Othello : index : %s\n", index);
-		fflush(stdout);
-		write(descGuiToClient, index, 4);
-
+		strcat(message, position);
+		printf("GUI : Sending the position to client : %s\n", message);
+		
+		write(descGuiToClient, message, strlen(message));
 	}
 
 	
@@ -544,8 +538,9 @@ static void coup_joueur(GtkWidget *p_case)
 		{
 			affiche_fenetre_perdu();
 		}
-		gele_damier();
 	}
+
+	gele_damier();
 }
 
 /* Fonction retournant texte du champs adresse du serveur de l'interface graphique */
@@ -681,6 +676,9 @@ static void clique_connect_adversaire(GtkWidget *b)
 	char* portToConnect = lecture_port_adversaire();
 	/*printf("Othello : Cliqued ! port : %s \n", portToConnect);*/
 	/*fflush(stdout);*/
+	
+	couleur = 0; // J1
+	init_interface_jeu();
 
 	//lancer un modele_client et ecouter sur un pipe nomme pour la MAJ de l'interface
 	if (!fork())
@@ -866,8 +864,7 @@ void init_interface_jeu(void)
 		set_label_J2("Vous");
 	}
 
-	set_score_J1(2);
-	set_score_J2(2);
+	calcul_scores();
 
 	nbCoup = 0;
 
@@ -875,9 +872,6 @@ void init_interface_jeu(void)
 	if(couleur == 1){
 		gele_damier();
 	}
-	
-	/***** TO DO *****/
-
 }
 
 /* Fonction reinitialisant la liste des joueurs sur l'interface graphique */
@@ -900,102 +894,6 @@ void affich_joueur(char *login, char *adresse, char *port)
 
 	gtk_text_buffer_insert_at_cursor(GTK_TEXT_BUFFER(gtk_text_view_get_buffer(GTK_TEXT_VIEW(gtk_builder_get_object(p_builder, "textview_joueurs")))), joueur, strlen(joueur));
 }
-
-/* ************************************ Ajout S.Rovedakis **************************************************
-
-//* Fonction exécutée par le thread gérant les communications à travers la socket *\
-static void * f_com_socket(void *p_arg)
-{
-  int i, nbytes, col, lig;
-  
-  char buf[MAXDATASIZE], *tmp, *p_parse;
-  int len, bytes_sent, t_msg_recu;
-
-  sigset_t signal_mask;
-  int fd_signal;
-  
-  uint16_t type_msg, col_j2;
-  uint16_t ucol, ulig;
-  
-  //* Association descripteur au signal SIGUSR1 *\
-  sigemptyset(&signal_mask);
-  sigaddset(&signal_mask, SIGUSR1);
-    
-  if(sigprocmask(SIG_BLOCK, &signal_mask, NULL) == -1)
-  {
-    printf("[Pourt joueur %d] Erreur sigprocmask\n", port);
-    
-    return 0;
-  }
-    
-  fd_signal = signalfd(-1, &signal_mask, 0);
-    
-  if(fd_signal == -1)
-  {
-    printf("[port joueur %d] Erreur signalfd\n", port);
-
-    return 0;
-  }
-
-  //* Ajout descripteur du signal dans ensemble de descripteur utilisé avec fonction select *\
-  FD_SET(fd_signal, &master);
-  
-  if(fd_signal>fdmax)
-  {
-    fdmax=fd_signal;
-  }
-
-  
-  while(1)
-  {
-    read_fds=master;	// copie des ensembles
-    
-    if(select(fdmax+1, &read_fds, &write_fds, NULL, NULL)==-1)
-    {
-      perror("Problème avec select");
-      exit(4);
-    }
-    
-    printf("[Port joueur %d] Entree dans boucle for\n", port);
-    for(i=0; i<=fdmax; i++)
-    {
-      printf("[Port joueur %d] newsockfd=%d, iteration %d boucle for\n", port, newsockfd, i);
-
-      if(FD_ISSET(i, &read_fds))
-      {
-        if(i==fd_signal)
-        {
-          //* Cas où de l'envoie du signal par l'interface graphique pour connexion au joueur adverse *\
-          
-          
-          //***** TO DO *****\
-          
-        }
-      
-        if(i==sockfd)
-        { // Acceptation connexion adversaire
-	  
-	    
-          //***** TO DO *****\
-	    
-          gtk_widget_set_sensitive((GtkWidget *) gtk_builder_get_object (p_builder, "button_start"), FALSE);
-        }
-      }
-      else
-      { // Reception et traitement des messages du joueur adverse
-      
-      
-          //***** TO DO *****\
-
-	    
-      }
-    }
-  }
-  
-  return NULL;
-}
-
-**************************************************************************************************************** */
 
 int main (int argc, char ** argv)
 {
@@ -1097,7 +995,7 @@ int main (int argc, char ** argv)
 
 			/* Gestion clic bouton fermeture fenetre */
 			g_signal_connect_swapped(G_OBJECT(p_win), "destroy", G_CALLBACK(gtk_main_quit), NULL);
-
+			// TODO : kill server, client & close, remove pipes
 
 
 			/* Recuperation numero port donne en parametre */
@@ -1112,7 +1010,7 @@ int main (int argc, char ** argv)
 				}  
 			}
 
-			change_img_case(0,0,0);
+			//change_img_case(0,0,0);
 
 			//here we create the two pipes we need to communicate between the gui the client and the server
 			char serverToGui[] = "serverToGui.fifo";
@@ -1180,28 +1078,86 @@ void * read_pipe_and_modify_gui()
 	}
 
 	//
-	char chaineALire[7];
+	char stringToRead[5];
 	int nbBRead;
 	while(1)
 	{
-		if((nbBRead = read(descServerToGui, chaineALire, 7-1)) == -1)
+		if((nbBRead = read(descServerToGui, stringToRead, 5-1)) == -1)
 		{
 			perror("read error : ");
 			exit(EXIT_FAILURE);
 		}else if(nbBRead > 0)
 		{
-			chaineALire[nbBRead] = '\0';
-			printf("Othello : cmd recved from pipe : %s : %d Bytes\n", chaineALire, (int) strlen(chaineALire));
+			stringToRead[nbBRead] = '\0';
+			printf("Othello : cmd recved from pipe : %s : %d Bytes\n", stringToRead, (int) strlen(stringToRead));
 			fflush(stdout);
+			
+			// message treatment
+			// A header is contained in the message as follow :
+			// j-XX means that the message is about the identity of the player (J1 or J2)
+			// c-XX means that the message deals with a position
+			char* token = strtok (stringToRead,"-");	
+			char* header = token;
+			token = strtok(NULL, stringToRead);
+			char* content = token;
+			token = strtok(NULL, stringToRead);
+			
+			if(strcmp(header, "j") == 0){
+				if(strcmp(content, "J2") == 0){
+					couleur = 1;
+					init_interface_jeu();
+				}
+				else{
+					couleur = 0;
+					init_interface_jeu();
+				}
+			}
+			else if(strcmp(header, "c") == 0){
+				printf("GUI : recv new move : %s\n", content);
+				fflush(stdout);
+				
+				char coord[2];
+				int col, lig;
+				int opponent_color = (couleur == 0) ? 1 : 0;
+				
+				col = ctoi(content[0]);
+				lig = ctoi(content[1]);
+				
+				indexes_to_coord(col, lig, coord);
+				
+				printf("Opponent add piece to : %s\n", coord);
+				fflush(stdout);
+				change_img_case(col, lig, opponent_color);
+				
+				// Appel des fonctions d'encadrement
+				encadrement_D_G(col, lig, opponent_color);
+				encadrement_G_D(col, lig, opponent_color);
+				encadrement_H_B(col, lig, opponent_color);
+				encadrement_B_H(col, lig, opponent_color);
+				encadrement_D_G(col, lig, opponent_color);
+				encadrement_NO(col, lig, opponent_color);
+				encadrement_NE(col, lig, opponent_color);
+				encadrement_SE(col, lig, opponent_color);
+				encadrement_SO(col, lig, opponent_color);
+
+				calcul_scores();
+				
+				degele_damier();
+			}
+			else{
+				printf("Wrong message header ...");
+				fflush(stdout);
+				exit(EXIT_FAILURE);
+			}
 
 			//in this thread we will execute functions like this one 
-			/*set_label_J1(chaineALire);*/
+			/*set_label_J1(stringToRead);*/
 			
-			/*printf("Othello : chaineALire[0] : %d\n",chaineALire[0] - '0');*/
+			/*printf("Othello : stringToRead[0] : %d\n",stringToRead[0] - '0');*/
 			/*fflush(stdout);*/
-			/*printf("Othello : chaineALire[1] : %d\n", chaineALire[1] - '0');*/
+			/*printf("Othello : stringToRead[1] : %d\n", stringToRead[1] - '0');*/
 			/*fflush(stdout);*/
-			change_img_case(chaineALire[0] - '0',chaineALire[1] - '0', 1);
+			change_img_case(stringToRead[0] - '0',stringToRead[1] - '0', 1);
 		}
 	}
 }
@@ -1223,5 +1179,10 @@ void * write_to_client()
 	//test the pipe 
 	/*char chaineAEcrire[7] = "Bonjour";*/
 	/*write(descGuiToClient, chaineAEcrire, 7);*/
+}
+
+int ctoi(char c){
+	int a = (int)c;	
+	return a-48;
 }
 

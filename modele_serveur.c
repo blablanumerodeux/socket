@@ -14,7 +14,10 @@
 
 int port; 
 
+// Methods header
 void gameOn(int args[2]);
+int openPipeServerToGui();
+void sendMessageByPipe(int descPipe, char* msg);
 
 int main(int argc, char **argv)
 {
@@ -152,6 +155,9 @@ void gameOn(int args[2])
 	token = strtok(NULL, buf);
 	char* portOponent = token;
 	token = strtok(NULL, buf);
+	
+	// All about pipe ServerToGui
+	int descServerToGui;
 
 	printf("Server : cmd : %s, port : %s\n", cmd, portOponent);
 	fflush(stdout);
@@ -179,6 +185,11 @@ void gameOn(int args[2])
 			/*printf("\n");*/
 			/*fflush(stdout);*/
 		}
+		
+		// We notify the GUI that the current player is J2 (since he receives the demand)
+		descServerToGui = openPipeServerToGui(); 	// Open the communication pipe
+		char msg[5] = "j-J2";						// set the message to send
+		sendMessageByPipe(descServerToGui, msg);	// process to the sending
 	}
 	//else it's an acknoledgement 
 	else if (strcmp(cmd, "ack")==0)
@@ -187,7 +198,7 @@ void gameOn(int args[2])
 		/*printf("Server : The connexion is established\n");*/
 		fflush(stdout);
 
-
+		descServerToGui = openPipeServerToGui();
 	}
 	else 
 	{
@@ -202,14 +213,7 @@ void gameOn(int args[2])
 	fflush(stdout);
 
 	//we open a pipe to send commands to the gui
-	int descServerToGui;
-	char serverToGui[] = "serverToGui.fifo";
-	if((descServerToGui = open(serverToGui, O_WRONLY)) == -1) 
-	{
-		fprintf(stderr, "Impossible d'ouvrir l'entrée du tube nommé.\n");
-		perror("open");
-		exit(EXIT_FAILURE);
-	}
+	descServerToGui = openPipeServerToGui();
 
 	//with this we can notify the gui that the connection is established 
 	/*char chaineAEcrire[7] = "Bonjour";*/
@@ -236,8 +240,26 @@ void gameOn(int args[2])
 			//and a lot more too...
 			//we can manipulate all the gui from here 
 			/*char chaineAEcrire[7] = "ReBonjo";*/
-			write(descServerToGui, buf, strlen(buf));
-			memset(buf, 0, sizeof(buf));
+			sendMessageByPipe(descServerToGui, buf);
 		}
 	}
 }
+
+int openPipeServerToGui(){
+	//we open a pipe to send commands to the gui
+	int descServerToGui;
+	char serverToGui[] = "serverToGui.fifo";
+	if((descServerToGui = open(serverToGui, O_WRONLY)) == -1) 
+	{
+		fprintf(stderr, "Impossible d'ouvrir l'entrée du tube nommé.\n");
+		perror("open");
+		exit(EXIT_FAILURE);
+	}
+	
+	return descServerToGui;
+}
+
+void sendMessageByPipe(int descPipe, char* msg){
+	write(descPipe, msg, strlen(msg));
+	memset(msg, 0, sizeof(msg));
+} 
