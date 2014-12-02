@@ -13,11 +13,15 @@
 #define PORTS "2058"//replaced by argv[1]
 
 int port; 
+int pid;
 
 // Methods header
 void gameOn(int args[2]);
 int openPipeServerToGui();
 void sendMessageByPipe(int descPipe, char* msg);
+static void stopChild(int signo); 
+int descServerToGui;
+
 
 int main(int argc, char **argv)
 {
@@ -30,6 +34,12 @@ int main(int argc, char **argv)
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_flags = AI_PASSIVE; 	// use my IP
+
+
+	if (signal(SIGTERM, stopChild) == SIG_ERR) {
+		printf("Could not attach signal handler\n");
+		return EXIT_FAILURE;
+	}
 
 	/*printf("Server : Serveur globale\n");*/
 	/*printf("Server : Numero de port : %s\n", argv[1]);*/
@@ -71,7 +81,7 @@ int main(int argc, char **argv)
 	freeaddrinfo(servinfo); 	// Libère structure
 
 	listen(sockfd, 5);
-	signal(SIGCHLD, SIG_IGN);
+	/*signal(SIGCHLD, SIG_IGN);*/
 
 	while(1)
 	{
@@ -156,9 +166,6 @@ void gameOn(int args[2])
 	char* portOponent = token;
 	token = strtok(NULL, buf);
 	
-	// All about pipe ServerToGui
-	int descServerToGui;
-
 	printf("Server : cmd : %s, port : %s\n", cmd, portOponent);
 	fflush(stdout);
 	
@@ -171,7 +178,13 @@ void gameOn(int args[2])
 		char portInChar[6]; 
 		sprintf(portInChar, "%d", port);
 		//we send a ack
-		if (fork())
+		pid_t pid_serv = fork();
+		if(pid_serv != 0)
+		{       
+			//I am the father
+			pid = (int) pid_serv;
+		}
+		else
 		{
 			if (execlp("./client.o", "client.o", portOponent, portInChar, "1", NULL))
 			{
@@ -179,9 +192,6 @@ void gameOn(int args[2])
 				fflush(stdout);
 				strerror(errno);
 			}
-		}
-		else
-		{
 			/*printf("\n");*/
 			/*fflush(stdout);*/
 		}
@@ -247,7 +257,6 @@ void gameOn(int args[2])
 
 int openPipeServerToGui(){
 	//we open a pipe to send commands to the gui
-	int descServerToGui;
 	char serverToGui[] = "serverToGui.fifo";
 	if((descServerToGui = open(serverToGui, O_WRONLY)) == -1) 
 	{
@@ -263,3 +272,38 @@ void sendMessageByPipe(int descPipe, char* msg){
 	write(descPipe, msg, strlen(msg));
 	memset(msg, 0, sizeof(msg));
 } 
+
+static void stopChild(int signo)
+{
+	printf("Server : Closing server\n");
+	fflush(stdout);
+	
+	int res;
+	if((res = close(descServerToGui))==-1)
+	{
+		perror("Server : close");
+		exit(EXIT_FAILURE);
+	}
+
+	if (pid !=0 ) 
+	{
+		int resk;
+		int status = 0;
+		pid_t w;
+		if (( resk = kill(pid, SIGTERM)) == -1) {
+			perror("kill ");
+			exit(EXIT_FAILURE); 
+		}
+		if ((w = waitpid(pid, &status, 0)) == -1) {
+			printf("GUI : waitpid on pidClient error\n");
+			fflush(stdout);
+			/*perror("waitpid");*/
+			/*exit(EXIT_FAILURE);*/
+		}
+
+	}
+
+	printf("Server : Stopped\n");
+	fflush(stdout);
+	exit(0);
+}
