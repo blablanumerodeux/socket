@@ -7,11 +7,15 @@
 #include <netdb.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <signal.h>
 
 #define SERVEUR "127.0.0.1"
 #define PORTS "2058" //replaced by argv[1]
 
+static void stopChild(int signo);
+
 int port;
+int descGuiToClient;        
 
 int main(int argc, char **argv)
 {
@@ -27,8 +31,14 @@ int main(int argc, char **argv)
 
 	/*printf("Client\n");*/
 	/*fflush(stdout);*/
-	
+
 	port = atoi(argv[2]);
+
+	if (signal(SIGTERM, stopChild) == SIG_ERR) {
+		printf("Could not attach signal handler\n");
+		return EXIT_FAILURE;
+	}
+
 
 	if(rv != 0) 
 	{
@@ -63,7 +73,7 @@ int main(int argc, char **argv)
 	}
 
 	freeaddrinfo(servinfo); 	// Libère structure
-	
+
 	/*if((numbytes = recv(sockfd, buf, 100-1, 0)) == -1)*/
 	/*{*/
 	/*perror("recv");*/
@@ -76,11 +86,11 @@ int main(int argc, char **argv)
 
 	char portInChar[6]; 
 	sprintf(portInChar, "%d", port);
-	
+
 	char message[30];
 	strcpy(message, "demande,");
 	strcat(message, portInChar);
-	
+
 	//if its a demande send this 
 	if (strcmp(argv[3], "0")==0)
 	{
@@ -92,7 +102,6 @@ int main(int argc, char **argv)
 		send(sockfd, "ack", 3, 0);
 	}
 
-	int descGuiToClient;        
 	char guiToClient[] = "guiToClient.fifo";
 
 	if((descGuiToClient= open(guiToClient, O_RDONLY)) == -1) 
@@ -135,3 +144,21 @@ int main(int argc, char **argv)
 	close(sockfd);
 	exit(0);
 }
+
+static void stopChild(int signo)
+{
+	printf("Client : Closing client\n");
+	fflush(stdout);
+
+	int res;
+	if((res = close(descGuiToClient))==-1)
+	{
+		perror("Server : close");
+		exit(EXIT_FAILURE);
+	}
+
+	printf("Client : Stopped\n");
+	fflush(stdout);
+	exit(0);
+}
+

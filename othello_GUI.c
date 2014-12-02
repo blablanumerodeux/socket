@@ -15,6 +15,7 @@
 
 int MAXDATASIZE = 100;
 int descGuiToClient;
+int descServerToGui;	
 
 /* Variables globales */
 int damier[8][8];	// tableau associe au damier
@@ -22,6 +23,9 @@ int couleur;		// 0 : pour noir, 1 : pour blanc
 int nbCoup;			// Nombre de coup joué
 
 int port;		// numero port passe a l'appel
+
+int pid;
+int pidClient;
 
 char *addr_j2, *port_j2;	// Info sur adversaire
 
@@ -158,6 +162,9 @@ void * write_to_client();
 
 /*function to cast char to int*/
 int ctoi(char c);
+
+/*Function ttriggered when the gui is shut down*/
+static void close_game();
 
 
 /* Fonction permettant de changer l'image d'une case du damier (indiqué par sa colonne et sa ligne) */
@@ -681,10 +688,14 @@ static void clique_connect_adversaire(GtkWidget *b)
 	init_interface_jeu();
 
 	//lancer un modele_client et ecouter sur un pipe nomme pour la MAJ de l'interface
-	if (!fork())
+	pid_t pid_client = fork();
+	if(pid_client != 0)
 	{
-		//I am the father 
-		
+		//I am the father
+		pidClient = (int) pid_client;
+	}
+	else
+       	{
 		char portInChar[6]; 
 		sprintf(portInChar, "%d", port);
 		printf("Othello : Je lance un client sur le port %s\n", portInChar);
@@ -696,9 +707,6 @@ static void clique_connect_adversaire(GtkWidget *b)
 			strerror(errno);
 			fflush(stdout);
 		}
-	}
-	else
-       	{
 		/*printf("\nj'ecoute le pipe et je met a jour l'interface\n");*/
 		/*fflush(stdout);*/
 		/*exit(0);	*/
@@ -902,7 +910,6 @@ int main (int argc, char ** argv)
 	if(argc!=2)
 	{
 		printf("\nPrototype : ./othello num_port\n\n");
-
 		exit(1);
 	}
 
@@ -994,7 +1001,7 @@ int main (int argc, char ** argv)
 			g_signal_connect(gtk_builder_get_object(p_builder, "button_start"), "clicked", G_CALLBACK(clique_connect_adversaire), NULL);
 
 			/* Gestion clic bouton fermeture fenetre */
-			g_signal_connect_swapped(G_OBJECT(p_win), "destroy", G_CALLBACK(gtk_main_quit), NULL);
+			g_signal_connect_swapped(G_OBJECT(p_win), "destroy", G_CALLBACK(close_game), NULL);
 			// TODO : kill server, client & close, remove pipes
 
 
@@ -1025,11 +1032,13 @@ int main (int argc, char ** argv)
                         {
                                 fprintf(stderr, "Impossible de créer le tube nommé.\n");
                                 exit(EXIT_FAILURE);
-                        }
+			}
 
-			if(!fork())
+			pid_t pid_serv = fork();
+			if(pid_serv != 0)
 			{ 	
 				//I am the father
+				pid = (int) pid_serv;
 
 				//we launch a thread that will just read the first pipe and modify the gui
 				pthread_t thread_read_pipe_and_modify_gui;
@@ -1045,6 +1054,7 @@ int main (int argc, char ** argv)
 			}
 			else
 			{
+
 				//we override the processe 
 				if (execlp("./server.o", "server.o", argv[1], NULL))
 				{
@@ -1068,7 +1078,6 @@ int main (int argc, char ** argv)
 
 void * read_pipe_and_modify_gui()
 {
-	int descServerToGui;	
 	char serverToGui[] = "serverToGui.fifo";
 
 	if((descServerToGui = open(serverToGui, O_RDONLY)) == -1) 
@@ -1157,7 +1166,7 @@ void * read_pipe_and_modify_gui()
 			/*fflush(stdout);*/
 			/*printf("Othello : stringToRead[1] : %d\n", stringToRead[1] - '0');*/
 			/*fflush(stdout);*/
-			change_img_case(stringToRead[0] - '0',stringToRead[1] - '0', 1);
+			/*change_img_case(stringToRead[0] - '0',stringToRead[1] - '0', 1);*/
 		}
 	}
 }
@@ -1181,8 +1190,102 @@ void * write_to_client()
 	/*write(descGuiToClient, chaineAEcrire, 7);*/
 }
 
-int ctoi(char c){
+int ctoi(char c)
+{
 	int a = (int)c;	
 	return a-48;
 }
 
+static void close_game()
+{
+
+	printf("GUI : closing game\n");
+	fflush(stdout);
+
+	printf("GUI : closing the pipes\n");
+	fflush(stdout);
+
+	int res;
+	if((res = close(descServerToGui))==-1)
+	{
+		/*perror("GUI : close descServerToGui");*/
+		/*exit(EXIT_FAILURE);*/
+		/*printf("GUI : The pipe for the server is not opened\n");*/
+		/*fflush(stdout);*/
+	}
+	if((res = close(descGuiToClient))==-1)
+	{
+		/*perror("GUI : close descGuiToClient");*/
+		/*exit(EXIT_FAILURE);*/
+		/*printf("GUI : The pipe for the client is not opened\n");*/
+		/*fflush(stdout);*/
+	}
+
+	/*unlink("serverToGui.fifo");*/
+	/*unlink("guiToClient.fifo");*/
+	/*printf("Fin close\n");*/
+	/*fflush(stdout);*/
+	
+
+	printf("GUI : killing process\n");
+	fflush(stdout);
+	
+	int status = 0;
+	pid_t w;
+	int resk;
+	if (pid == 0)
+	{
+		/*printf("GUI : pid = 0\n");*/
+		/*fflush(stdout);*/
+	}else
+	{
+		if (( resk = kill(pid, SIGTERM)) == -1) {
+			perror("kill ");
+			exit(EXIT_FAILURE);
+		}
+		if ((w = waitpid(pid, &status, 0)) == -1) {
+			printf("GUI : waitpid on pid error\n");
+			fflush(stdout);
+			/*perror("waitpid");*/
+			/*exit(EXIT_FAILURE);*/
+		}
+	}
+
+	if (pidClient == 0)
+	{
+		printf("GUI : pidClient = 0\n");
+		fflush(stdout);
+	}else
+	{
+		if (( resk = kill(pidClient, SIGTERM)) == -1) {
+			perror("kill ");
+			exit(EXIT_FAILURE);
+		}
+		if ((w = waitpid(pidClient, &status, 0)) == -1) {
+			printf("GUI : waitpid on pidClient error\n");
+			fflush(stdout);
+			/*perror("waitpid");*/
+			/*exit(EXIT_FAILURE);*/
+		}
+
+		/*printf("GUI : pidClient : %d\n", pidClient);*/
+		/*fflush(stdout);*/
+	}
+
+	printf("GUI : removing the pipes\n");
+	fflush(stdout);
+
+	if((res = remove("./serverToGui.fifo"))==-1)
+	{
+		perror("GUI : remove");
+		exit(EXIT_FAILURE);
+	}
+	if((res = remove("./guiToClient.fifo"))==-1)
+	{
+		perror("GUI : remove");
+		exit(EXIT_FAILURE);
+	}
+	printf("Game over\n");
+	fflush(stdout);
+	gtk_main_quit();
+}
