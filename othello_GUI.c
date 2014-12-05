@@ -55,8 +55,14 @@ void change_img_case(int col, int lig, int couleur_j);
 /* Fonction permettant changer nom joueur blanc dans cadre Score */
 void set_label_J1(char *texte);
 
+/* Fonction permettant récupérer nom joueur noir dans cadre Score */
+char *get_label_J1(void);
+
 /* Fonction permettant de changer nom joueur noir dans cadre Score */
 void set_label_J2(char *texte);
+
+/* Fonction permettant récupérer nom joueur blanc dans cadre Score */
+char *get_label_J2(void);
 
 /* Fonction permettant de changer score joueur blanc dans cadre Score */
 void set_score_J1(int score);
@@ -69,6 +75,9 @@ void set_score_J2(int score);
 
 /* Fonction permettant de récupérer score joueur noir dans cadre Score */
 int get_score_J2(void);
+
+/* Fonction pour mettre le joueur actif en gras */
+void bold_label_player(int player);
 
 /* Fonction transformant coordonnees du damier graphique en indexes pour matrice du damier */
 void coord_to_indexes(const gchar *coord, int *col, int *lig);
@@ -103,6 +112,9 @@ void encadrement_NO(int col_piece, int lig_piece, int couleur_joueur);
 /* Fonction d'encadrement diagonale vers Sud Est */
 void encadrement_SE(int col_piece, int lig_piece, int couleur_joueur);
 
+/* Fonction pour vérifier si le damier est entierement rempli */
+int damier_complet();
+
 /* Fonction appelee lors du clique sur une case du damier */
 static void coup_joueur(GtkWidget *p_case);
 
@@ -134,7 +146,10 @@ void affiche_fenetre_action_impossible(void);
 static void clique_connect_serveur(GtkWidget *b);
 
 /* Fonction desactivant bouton demarrer partie */
-void disable_button_statr(void);
+void disable_button_start(void);
+
+/* Fonction activant bouton demarrer partie */
+void enable_button_start(void);
 
 /* Fonction appelee lors du clique du bouton Demarrer partie */
 static void clique_connect_adversaire(GtkWidget *b);
@@ -175,16 +190,15 @@ void change_img_case(int col, int lig, int couleur_j)
 	coord=malloc(3*sizeof(char));
 
 	indexes_to_coord(col, lig, coord);
+	damier[col][lig] = couleur_j;
 
 	if(couleur_j)
 	{ // image pion blanc
 		gtk_image_set_from_file(GTK_IMAGE(gtk_builder_get_object(p_builder, coord)), "UI_Glade/case_blanc.png");
-		damier[col][lig] = 1;
 	}
 	else
 	{ // image pion noir
 		gtk_image_set_from_file(GTK_IMAGE(gtk_builder_get_object(p_builder, coord)), "UI_Glade/case_noir.png");
-		damier[col][lig] = 0;
 	}
 }
 
@@ -194,10 +208,22 @@ void set_label_J1(char *texte)
 	gtk_label_set_text(GTK_LABEL(gtk_builder_get_object (p_builder, "label_J1")), texte);
 }
 
+/* Fonction permettant de récupérer le label du joueur noir dans cadre Score */
+char *get_label_J1(void)
+{
+	return (char *)gtk_label_get_text(GTK_LABEL(gtk_builder_get_object (p_builder, "label_J1")));
+}
+
 /* Fonction permettant de changer nom joueur noir dans cadre Score */
 void set_label_J2(char *texte)
 {
 	gtk_label_set_text(GTK_LABEL(gtk_builder_get_object (p_builder, "label_J2")), texte);
+}
+
+/* Fonction permettant de récupérer le label du joueur noir dans cadre Score */
+char *get_label_J2(void)
+{
+	return (char *)gtk_label_get_text(GTK_LABEL(gtk_builder_get_object (p_builder, "label_J2")));
 }
 
 /* Fonction permettant de changer score joueur blanc dans cadre Score */
@@ -240,6 +266,30 @@ int get_score_J2(void)
 	c=gtk_label_get_text(GTK_LABEL(gtk_builder_get_object (p_builder, "label_ScoreJ2")));
 
 	return atoi(c);
+}
+
+/* Fonction pour mettre le joueur actif en gras */
+void bold_label_player(int player){
+
+	char label_player[20];
+	strcpy(label_player, "<b>");
+
+	switch(player){
+		case 0:
+			strcat(label_player, get_label_J2());
+			strcat(label_player, "</b>");
+
+			gtk_label_set_markup(GTK_LABEL((GtkWidget *) gtk_builder_get_object (p_builder, "label_J2")), label_player);
+			gtk_label_set_markup(GTK_LABEL((GtkWidget *) gtk_builder_get_object (p_builder, "label_J1")), get_label_J1());
+		break;
+		case 1:
+			strcat(label_player, get_label_J1());
+			strcat(label_player, "</b>");
+			
+			gtk_label_set_markup(GTK_LABEL((GtkWidget *) gtk_builder_get_object (p_builder, "label_J1")), label_player);
+			gtk_label_set_markup(GTK_LABEL((GtkWidget *) gtk_builder_get_object (p_builder, "label_J2")), get_label_J2());
+		break;
+	}
 }
 
 /* Fonction transformant coordonnees du damier graphique en indexes pour matrice du damier */
@@ -375,7 +425,7 @@ void encadrement_G_D(int col_piece, int lig_piece, int couleur_joueur){
 	while (i < 8 && damier[i][lig_piece] == couleur_adverse){
 		i++;
 	}
-	if (i <= 8 && damier[i][lig_piece] == couleur_joueur && i != col_piece){
+	if (i < 8 && damier[i][lig_piece] == couleur_joueur && i != col_piece){
 		for (i = i - 1; i > col_piece; i--){
 			change_img_case(i, lig_piece, couleur_joueur);
 		}
@@ -390,7 +440,7 @@ void encadrement_H_B(int col_piece, int lig_piece, int couleur_joueur){
 	while (i < 8 && damier[col_piece][i] == couleur_adverse){
 		i++;
 	}
-	if (i <= 8 && damier[col_piece][i] == couleur_joueur && i != lig_piece){
+	if (i < 8 && damier[col_piece][i] == couleur_joueur && i != lig_piece){
 		for (i = i - 1; i > lig_piece; i--){
 			change_img_case(col_piece, i, couleur_joueur);
 		}
@@ -400,7 +450,7 @@ void encadrement_H_B(int col_piece, int lig_piece, int couleur_joueur){
 /* Fonction d'encadrement de bas vers haut */
 void encadrement_B_H(int col_piece, int lig_piece, int couleur_joueur){
 	int couleur_adverse = (couleur_joueur == 0) ? 1 : 0;
-	int i = col_piece - 1;
+	int i = lig_piece - 1;
 
 	while (i > 0 && damier[col_piece][i] == couleur_adverse){
 		i--;
@@ -422,8 +472,8 @@ void encadrement_NE(int col_piece, int lig_piece, int couleur_joueur){
 		i++;
 		j--;
 	}
-	if (i <= 8 && j >= 0 && damier[i][j] == couleur_joueur && i != col_piece && j != lig_piece){
-		for (i = i - 1, j = j + 1; i < col_piece, j < lig_piece; i--, j++){
+	if (i < 8 && j >= 0 && damier[i][j] == couleur_joueur && i != col_piece && j != lig_piece){
+		for (i = i - 1, j = j + 1; i > col_piece, j < lig_piece; i--, j++){
 			change_img_case(i, j, couleur_joueur);
 		}
 	}
@@ -439,8 +489,8 @@ void encadrement_SO(int col_piece, int lig_piece, int couleur_joueur){
 		i--;
 		j++;
 	}
-	if (i >= 0 && j <= 8 && damier[i][j] == couleur_joueur && i != col_piece && j != lig_piece){
-		for (i = i + 1, j = j - 1; i < col_piece, j < lig_piece; i++, j--){
+	if (i >= 0 && j < 8 && damier[i][j] == couleur_joueur && i != col_piece && j != lig_piece){
+		for (i = i + 1, j = j - 1; i < col_piece, j > lig_piece; i++, j--){
 			change_img_case(i, j, couleur_joueur);
 		}
 	}
@@ -473,11 +523,26 @@ void encadrement_SE(int col_piece, int lig_piece, int couleur_joueur){
 		i++;
 		j++;
 	}
-	if (i <= 8 && j <= 8 && damier[i][j] == couleur_joueur && i != col_piece && j != lig_piece){
-		for (i = i - 1, j = j - 1; i < col_piece, j < lig_piece; i--, j--){
+	if (i < 8 && j < 8 && damier[i][j] == couleur_joueur && i != col_piece && j != lig_piece){
+		for (i = i - 1, j = j - 1; i > col_piece, j > lig_piece; i--, j--){
 			change_img_case(i, j, couleur_joueur);
 		}
 	}
+}
+
+/* Check if game is ended */
+int damier_complet(){
+	int i = 0;
+	int j = 0;
+	while(i < 8 && j < 8 && damier[i][j] != -1){
+		i++;
+		j++;	
+	}
+	// we are at the last slot, so every slot is full.
+	if(i == 8 && j == 8){
+		return 1;	
+	}
+	return 0;
 }
 
 /* Fonction appelee lors du clique sur une case du damier */
@@ -503,7 +568,6 @@ static void coup_joueur(GtkWidget *p_case)
 		encadrement_G_D(col, lig, couleur);
 		encadrement_H_B(col, lig, couleur);
 		encadrement_B_H(col, lig, couleur);
-		encadrement_D_G(col, lig, couleur);
 		encadrement_NO(col, lig, couleur);
 		encadrement_NE(col, lig, couleur);
 		encadrement_SE(col, lig, couleur);
@@ -530,11 +594,16 @@ static void coup_joueur(GtkWidget *p_case)
 		printf("GUI : Sending the position to client : %s\n", message);
 		
 		write(descGuiToClient, message, strlen(message));
+		
+		gele_damier();
+
+		int opponent_color = (couleur == 0) ? 1 : 0;
+		bold_label_player(opponent_color);
 	}
 
 	
 	// Fin de jeu
-	if(nbCoup == 32)
+	if(nbCoup == 32 || damier_complet() == 1)
 	{
 		if((couleur == 0 && get_score_J2() < get_score_J1()) ||
 		(couleur == 1 && get_score_J2() > get_score_J1()))
@@ -545,9 +614,10 @@ static void coup_joueur(GtkWidget *p_case)
 		{
 			affiche_fenetre_perdu();
 		}
+		
+		gele_damier();
+		enable_button_start();
 	}
-
-	gele_damier();
 }
 
 /* Fonction retournant texte du champs adresse du serveur de l'interface graphique */
@@ -648,9 +718,17 @@ static void clique_connect_serveur(GtkWidget *b)
 }
 
 /* Fonction desactivant bouton demarrer partie */
-void disable_button_statr(void)
+void disable_button_start(void)
 {
 	gtk_widget_set_sensitive((GtkWidget *) gtk_builder_get_object (p_builder, "button_start"), FALSE);
+	gtk_widget_set_sensitive((GtkWidget *) gtk_builder_get_object (p_builder, "button_connect"), FALSE);
+}
+
+/* Fonction activant bouton demarrer partie */
+void enable_button_start(void)
+{
+	gtk_widget_set_sensitive((GtkWidget *) gtk_builder_get_object (p_builder, "button_start"), TRUE);
+	gtk_widget_set_sensitive((GtkWidget *) gtk_builder_get_object (p_builder, "button_connect"), TRUE);
 }
 
 /* ********************* Version de S.Rovedakis *********************
@@ -711,6 +789,9 @@ static void clique_connect_adversaire(GtkWidget *b)
 		/*fflush(stdout);*/
 		/*exit(0);	*/
 	}
+	
+	// Disable connect button
+	disable_button_start();
 }
 
 /* Fonction desactivant les cases du damier */
@@ -871,6 +952,8 @@ void init_interface_jeu(void)
 		set_label_J1("Adversaire");
 		set_label_J2("Vous");
 	}
+
+	bold_label_player(0);
 
 	calcul_scores();
 
@@ -1115,10 +1198,16 @@ void * read_pipe_and_modify_gui()
 				if(strcmp(content, "J2") == 0){
 					couleur = 1;
 					init_interface_jeu();
+					
+					// Disable connect button
+					disable_button_start();
 				}
 				else{
 					couleur = 0;
 					init_interface_jeu();
+					
+					// Disable connect button
+					disable_button_start();
 				}
 			}
 			else if(strcmp(header, "c") == 0){
@@ -1143,14 +1232,13 @@ void * read_pipe_and_modify_gui()
 				encadrement_G_D(col, lig, opponent_color);
 				encadrement_H_B(col, lig, opponent_color);
 				encadrement_B_H(col, lig, opponent_color);
-				encadrement_D_G(col, lig, opponent_color);
 				encadrement_NO(col, lig, opponent_color);
 				encadrement_NE(col, lig, opponent_color);
 				encadrement_SE(col, lig, opponent_color);
 				encadrement_SO(col, lig, opponent_color);
 
 				calcul_scores();
-				
+				bold_label_player(couleur);
 				degele_damier();
 			}
 			else{
