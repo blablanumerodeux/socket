@@ -7,7 +7,7 @@ client: modele_client.c
 	gcc modele_client.c -o client.o 
 
 gui: othello_GUI.c 
-	gcc -lpthread -lX11 -o othello_GUI.o othello_GUI.c $(shell pkg-config --cflags --libs gtk+-3.0)
+	gcc -lpthread -lX11 -o othello_GUI.o othello_GUI.c $(shell pkg-config --cflags --libs gtk+-3.0 x11)
 
 clean:
 	rm -rf *.o

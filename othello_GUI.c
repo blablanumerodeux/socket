@@ -12,6 +12,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <X11/Xlib.h>
 
 int MAXDATASIZE = 100;
 int descGuiToClient;
@@ -997,6 +998,7 @@ int main (int argc, char ** argv)
 	}
 
 	/* Initialisation de GTK+ */
+	XInitThreads();
 	gtk_init (& argc, & argv);
 
 	/* Creation d'un nouveau GtkBuilder */
@@ -1193,19 +1195,36 @@ void * read_pipe_and_modify_gui()
 			token = strtok(NULL, stringToRead);
 			char* content = token;
 			token = strtok(NULL, stringToRead);
-			
+
 			if(strcmp(header, "j") == 0){
 				if(strcmp(content, "J2") == 0){
-					couleur = 1;
-					init_interface_jeu();
-					
-					// Disable connect button
-					disable_button_start();
+
+					GtkDialogFlags flags = GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT;
+					GtkWidget *dialog = gtk_message_dialog_new(GTK_WINDOW(gtk_builder_get_object(p_builder, "window1")), flags, GTK_MESSAGE_QUESTION, GTK_BUTTONS_YES_NO, "Jouer");
+					switch(gtk_dialog_run(GTK_DIALOG(dialog)))
+					{
+						case GTK_RESPONSE_YES:
+							/* do 'Yes' stuff */
+							couleur = 1;
+							init_interface_jeu();
+
+							// Disable connect button
+							disable_button_start();
+
+							break;
+						case GTK_RESPONSE_NO:
+							/* do 'No' stuff */
+							break;
+						default:
+							break;
+					}
+					/* You're responsible for destroying the dialog after it's been run */
+					gtk_widget_destroy(dialog);
 				}
 				else{
 					couleur = 0;
 					init_interface_jeu();
-					
+
 					// Disable connect button
 					disable_button_start();
 				}
