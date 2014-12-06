@@ -1,4 +1,4 @@
-all: mainserver client gui clean copy_executable
+all: mainserver client gui copy_executable clean
 
 mainserver: modele_serveur.c
 	gcc modele_serveur.c -o server.o 
