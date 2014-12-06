@@ -1,4 +1,4 @@
-all: mainserver client gui copy_executable clean
+all: mainserver client gui clean copy_executable
 
 mainserver: modele_serveur.c
 	gcc modele_serveur.c -o server.o 
@@ -12,6 +12,7 @@ gui: othello_GUI.c
 clean:
 	rm -rf *.fifo
 	rm ../OthelloBis/*.fifo # TODO update the path
+	rm ../OthelloBis/*.o # TODO update the path
 	
 copy_executable:
 	cp *.o ../OthelloBis/ # TODO update the path
