@@ -32,16 +32,16 @@ char *addr_j2, *port_j2;	// Info sur adversaire
 
 /* *************** Ajout du S.Rovedakis **************
 
-pthread_t thr_id;	// Id du thread fils gerant connexion socket
-  
-  int sockfd, newsockfd=-1; // descripteurs de socket
-  int addr_size;	 // taille adresse
-  struct sockaddr *their_addr;	// structure pour stocker adresse adversaire
+   pthread_t thr_id;	// Id du thread fils gerant connexion socket
 
-  fd_set master, read_fds, write_fds;	// ensembles de socket pour toutes les sockets actives avec select
-  int fdmax;			// utilise pour select
+   int sockfd, newsockfd=-1; // descripteurs de socket
+   int addr_size;	 // taille adresse
+   struct sockaddr *their_addr;	// structure pour stocker adresse adversaire
 
-******************************************************* */
+   fd_set master, read_fds, write_fds;	// ensembles de socket pour toutes les sockets actives avec select
+   int fdmax;			// utilise pour select
+
+ ******************************************************* */
 
 /* Variables globales associées à l'interface graphique */
 GtkBuilder  *  p_builder   = NULL;
@@ -176,6 +176,9 @@ void * read_pipe_and_modify_gui();
 /*funtion that open the pipe and don't block the interface*/
 void * write_to_client();
 
+/*funtion that connect */
+void * connect_server();
+
 /*function to cast char to int*/
 int ctoi(char c);
 
@@ -282,14 +285,14 @@ void bold_label_player(int player){
 
 			gtk_label_set_markup(GTK_LABEL((GtkWidget *) gtk_builder_get_object (p_builder, "label_J2")), label_player);
 			gtk_label_set_markup(GTK_LABEL((GtkWidget *) gtk_builder_get_object (p_builder, "label_J1")), get_label_J1());
-		break;
+			break;
 		case 1:
 			strcat(label_player, get_label_J1());
 			strcat(label_player, "</b>");
-			
+
 			gtk_label_set_markup(GTK_LABEL((GtkWidget *) gtk_builder_get_object (p_builder, "label_J1")), label_player);
 			gtk_label_set_markup(GTK_LABEL((GtkWidget *) gtk_builder_get_object (p_builder, "label_J2")), get_label_J2());
-		break;
+			break;
 	}
 }
 
@@ -297,12 +300,12 @@ void bold_label_player(int player){
 void coord_to_indexes(const gchar *coord, int *col, int *lig)
 {
 	char *c;
-  
+
 	c=malloc(3*sizeof(char));
-  
+
 	c=strncpy(c, coord, 1);
 	c[1]='\0';
-  
+
 	if(strcmp(c, "A")==0)
 	{
 		*col=0;
@@ -390,11 +393,11 @@ void calcul_scores(){
 			switch(damier[i][j]){
 				case 0:
 					score_J1++;
-				break;
+					break;
 
 				case 1:
 					score_J2++;
-				break;								
+					break;								
 			}
 		}
 	}
@@ -559,7 +562,7 @@ static void coup_joueur(GtkWidget *p_case)
 	{
 		affiche_fenetre_action_impossible();
 	}
-   	else
+	else
 	{
 		nbCoup++;
 		change_img_case(col, lig, couleur);
@@ -579,35 +582,35 @@ static void coup_joueur(GtkWidget *p_case)
 		//we send the movement to the other player
 		char message[5];
 		strcpy(message, "c-");
-				
+
 		char position[5];
 		char ligInChar[2];
 		char colInChar[2];
-		
+
 		memset(position, 0, sizeof(position));
-		
+
 		sprintf(ligInChar, "%d", lig);
 		sprintf(colInChar, "%d", col);
 		strcat(position, colInChar);
 		strcat(position, ligInChar);
-		
+
 		strcat(message, position);
 		printf("GUI : Sending the position to client : %s\n", message);
-		
+
 		write(descGuiToClient, message, strlen(message));
-		
+
 		gele_damier();
 
 		int opponent_color = (couleur == 0) ? 1 : 0;
 		bold_label_player(opponent_color);
 	}
 
-	
+
 	// Fin de jeu
 	if(nbCoup == 32 || damier_complet() == 1)
 	{
 		if((couleur == 0 && get_score_J2() < get_score_J1()) ||
-		(couleur == 1 && get_score_J2() > get_score_J1()))
+				(couleur == 1 && get_score_J2() > get_score_J1()))
 		{
 			affiche_fenetre_gagne();
 		}
@@ -615,7 +618,7 @@ static void coup_joueur(GtkWidget *p_case)
 		{
 			affiche_fenetre_perdu();
 		}
-		
+
 		gele_damier();
 		enable_button_start();
 	}
@@ -714,8 +717,19 @@ void affiche_fenetre_action_impossible(void)
 static void clique_connect_serveur(GtkWidget *b)
 {
 	/***** TO DO *****/
-	printf("\nClique connect serveur\n");
+	printf("Clic connect serveur\n");
 	fflush(stdout);
+
+	char * portServer = lecture_port_serveur();
+	char * login = lecture_login();
+
+	printf("portServer = %s, login = %s\n", portServer, login);
+	fflush(stdout);
+
+	//we launch a thread that will just write to the client to comunicate our position to the oponent
+	pthread_t thread_connect_server_players;
+	int desc_thread_connect_server_players = pthread_create(&thread_connect_server_players, NULL, connect_server, 0);
+
 }
 
 /* Fonction desactivant bouton demarrer partie */
@@ -737,24 +751,24 @@ void enable_button_start(void)
 // Fonction traitement signal bouton Demarrer partie
 static void clique_connect_adversaire(GtkWidget *b)
 {
-  if(newsockfd==-1)
-  {
-    // Deactivation bouton demarrer partie
-    gtk_widget_set_sensitive((GtkWidget *) gtk_builder_get_object (p_builder, "button_start"), FALSE);
-    
-    // Recuperation  adresse et port adversaire au format chaines caracteres
-    addr_j2=lecture_addr_adversaire();
-    port_j2=lecture_port_adversaire();
-    
-    printf("[Port joueur : %d] Adresse j2 lue : %s\n",port, addr_j2);
-    printf("[Port joueur : %d] Port j2 lu : %s\n", port, port_j2);
+if(newsockfd==-1)
+{
+// Deactivation bouton demarrer partie
+gtk_widget_set_sensitive((GtkWidget *) gtk_builder_get_object (p_builder, "button_start"), FALSE);
 
-    
-    pthread_kill(thr_id, SIGUSR1); 
-  }
+// Recuperation  adresse et port adversaire au format chaines caracteres
+addr_j2=lecture_addr_adversaire();
+port_j2=lecture_port_adversaire();
+
+printf("[Port joueur : %d] Adresse j2 lue : %s\n",port, addr_j2);
+printf("[Port joueur : %d] Port j2 lu : %s\n", port, port_j2);
+
+
+pthread_kill(thr_id, SIGUSR1); 
+}
 }
 
-********************************************************************* */
+ ********************************************************************* */
 
 /* Fonction appelee lors du clique du bouton Demarrer partie */
 static void clique_connect_adversaire(GtkWidget *b)
@@ -762,7 +776,7 @@ static void clique_connect_adversaire(GtkWidget *b)
 	char* portToConnect = lecture_port_adversaire();
 	/*printf("Othello : Cliqued ! port : %s \n", portToConnect);*/
 	/*fflush(stdout);*/
-	
+
 	couleur = 0; // J1
 	init_interface_jeu();
 
@@ -774,7 +788,7 @@ static void clique_connect_adversaire(GtkWidget *b)
 		pidClient = (int) pid_client;
 	}
 	else
-       	{
+	{
 		char portInChar[6]; 
 		sprintf(portInChar, "%d", port);
 		printf("Othello : Je lance un client sur le port %s\n", portInChar);
@@ -790,7 +804,7 @@ static void clique_connect_adversaire(GtkWidget *b)
 		/*fflush(stdout);*/
 		/*exit(0);	*/
 	}
-	
+
 	// Disable connect button
 	disable_button_start();
 }
@@ -1106,17 +1120,17 @@ int main (int argc, char ** argv)
 
 			//here we create the two pipes we need to communicate between the gui the client and the server
 			char serverToGui[] = "serverToGui.fifo";
-                        if(mkfifo(serverToGui, S_IRUSR | S_IWUSR ) != 0)  
-                        {
-                                fprintf(stderr, "Impossible de créer le tube nommé.\n");
-                                exit(EXIT_FAILURE);
-                        }
+			if(mkfifo(serverToGui, S_IRUSR | S_IWUSR ) != 0)  
+			{
+				fprintf(stderr, "Impossible de créer le tube nommé.\n");
+				exit(EXIT_FAILURE);
+			}
 
 			char guiToClient[] = "guiToClient.fifo";
-                        if(mkfifo(guiToClient, S_IRUSR | S_IWUSR ) != 0)  
-                        {
-                                fprintf(stderr, "Impossible de créer le tube nommé.\n");
-                                exit(EXIT_FAILURE);
+			if(mkfifo(guiToClient, S_IRUSR | S_IWUSR ) != 0)  
+			{
+				fprintf(stderr, "Impossible de créer le tube nommé.\n");
+				exit(EXIT_FAILURE);
 			}
 
 			pid_t pid_serv = fork();
@@ -1185,7 +1199,7 @@ void * read_pipe_and_modify_gui()
 			stringToRead[nbBRead] = '\0';
 			printf("Othello : cmd recved from pipe : %s : %d Bytes\n", stringToRead, (int) strlen(stringToRead));
 			fflush(stdout);
-			
+
 			// message treatment
 			// A header is contained in the message as follow :
 			// j-XX means that the message is about the identity of the player (J1 or J2)
@@ -1232,20 +1246,20 @@ void * read_pipe_and_modify_gui()
 			else if(strcmp(header, "c") == 0){
 				printf("GUI : recv new move : %s\n", content);
 				fflush(stdout);
-				
+
 				char coord[2];
 				int col, lig;
 				int opponent_color = (couleur == 0) ? 1 : 0;
-				
+
 				col = ctoi(content[0]);
 				lig = ctoi(content[1]);
-				
+
 				indexes_to_coord(col, lig, coord);
-				
+
 				printf("Opponent add piece to : %s\n", coord);
 				fflush(stdout);
 				change_img_case(col, lig, opponent_color);
-				
+
 				// Appel des fonctions d'encadrement
 				encadrement_D_G(col, lig, opponent_color);
 				encadrement_G_D(col, lig, opponent_color);
@@ -1268,7 +1282,7 @@ void * read_pipe_and_modify_gui()
 
 			//in this thread we will execute functions like this one 
 			/*set_label_J1(stringToRead);*/
-			
+
 			/*printf("Othello : stringToRead[0] : %d\n",stringToRead[0] - '0');*/
 			/*fflush(stdout);*/
 			/*printf("Othello : stringToRead[1] : %d\n", stringToRead[1] - '0');*/
@@ -1332,11 +1346,11 @@ static void close_game()
 	/*unlink("guiToClient.fifo");*/
 	/*printf("Fin close\n");*/
 	/*fflush(stdout);*/
-	
+
 
 	printf("GUI : killing process\n");
 	fflush(stdout);
-	
+
 	int status = 0;
 	pid_t w;
 	int resk;
@@ -1396,3 +1410,65 @@ static void close_game()
 	fflush(stdout);
 	gtk_main_quit();
 }
+
+
+void * connect_server()
+{
+	char* SERVEUR = "127.0.0.1";
+	char* PORTS = "2058";
+
+	int sockfd, new_fd, rv, sin_size, numbytes;
+	struct addrinfo hints, *servinfo, *p;
+	struct sockaddr their_adr;
+	char buf[100];
+
+	memset(&hints, 0, sizeof(hints));
+	hints.ai_family = AF_UNSPEC;
+	hints.ai_socktype = SOCK_STREAM;
+	rv = getaddrinfo(SERVEUR, PORTS, &hints, &servinfo);
+
+	if(rv != 0)
+	{
+		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
+		exit(0);
+	}
+
+	// Création  socket  et  attachement
+	for(p = servinfo; p != NULL; p = p->ai_next) 
+	{
+		if((sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) 
+		{   
+			perror("client: socket");
+			continue;
+		}   
+		if((connect(sockfd, p->ai_addr, p->ai_addrlen) == -1))
+		{   
+			close(sockfd);
+			perror("client: connect");
+			continue;
+		}   
+
+		break;
+	}
+
+	if(p == NULL)
+	{
+		fprintf(stderr, "server: failed to bind\n");
+		exit(0);
+	}
+
+	freeaddrinfo(servinfo);       // Libère structure
+
+	if((numbytes = recv(sockfd, buf, 100-1, 0)) == -1) 
+	{
+		perror("recv");
+		exit(1);
+	}
+
+	printf("Message reçu : %s\n",buf);
+
+	/*void affich_joueur(char *login, char *adresse, char *port)*/
+
+	close(sockfd);
+}
+
