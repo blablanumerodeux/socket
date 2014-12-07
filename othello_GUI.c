@@ -30,23 +30,9 @@ int pidClient;
 
 char *addr_j2, *port_j2;	// Info sur adversaire
 
-/* *************** Ajout du S.Rovedakis **************
-
-pthread_t thr_id;	// Id du thread fils gerant connexion socket
-  
-  int sockfd, newsockfd=-1; // descripteurs de socket
-  int addr_size;	 // taille adresse
-  struct sockaddr *their_addr;	// structure pour stocker adresse adversaire
-
-  fd_set master, read_fds, write_fds;	// ensembles de socket pour toutes les sockets actives avec select
-  int fdmax;			// utilise pour select
-
-******************************************************* */
-
 /* Variables globales associées à l'interface graphique */
 GtkBuilder  *  p_builder   = NULL;
 GError      *  p_err       = NULL;
-
 
 // Entetes des fonctions  
 
@@ -550,17 +536,19 @@ void encadrement_SE(int col_piece, int lig_piece, int couleur_joueur){
 
 /* Check if game is ended */
 int damier_complet(){
-	int i = 0;
-	int j = 0;
-	while(i < 8 && j < 8 && damier[i][j] != -1){
-		i++;
-		j++;	
+	int i, j;
+	
+	for(i = 0 ; i < 8 ; i++)
+	{
+		for(j = 0 ; j < 8 ; j++)
+		{
+			if(damier[i][j] == -1)
+			{
+				return 0;
+			}
+		}
 	}
-	// we are at the last slot, so every slot is full.
-	if(i == 8 && j == 8){
-		return 1;	
-	}
-	return 0;
+	return 1;	
 }
 
 /* Fonction appelee lors du clique sur une case du damier */
@@ -580,6 +568,11 @@ static void coup_joueur(GtkWidget *p_case)
 	{
 		nbCoup++;
 		change_img_case(col, lig, couleur);
+
+		char coord[2];
+		indexes_to_coord(col, lig, coord);
+		printf("Player add piece to : %s\n", coord);
+		fflush(stdout);
 
 		// Appel des fonctions d'encadrement
 		encadrement_D_G(col, lig, couleur);
@@ -607,9 +600,7 @@ static void coup_joueur(GtkWidget *p_case)
 		sprintf(colInChar, "%d", col);
 		strcat(position, colInChar);
 		strcat(position, ligInChar);
-		
 		strcat(message, position);
-		printf("GUI : Sending the position to client : %s\n", message);
 		
 		write(descGuiToClient, message, strlen(message));
 		
@@ -632,6 +623,9 @@ static void coup_joueur(GtkWidget *p_case)
 		{
 			affiche_fenetre_perdu();
 		}
+
+		printf("The game is done !");
+		fflush(stdout);
 		
 		reset_interface();
 		enable_button_start();
@@ -810,36 +804,10 @@ void enable_button_start(void)
 	gtk_widget_set_sensitive((GtkWidget *) gtk_builder_get_object (p_builder, "button_connect"), TRUE);
 }
 
-/* ********************* Version de S.Rovedakis *********************
-
-// Fonction traitement signal bouton Demarrer partie
-static void clique_connect_adversaire(GtkWidget *b)
-{
-  if(newsockfd==-1)
-  {
-    // Deactivation bouton demarrer partie
-    gtk_widget_set_sensitive((GtkWidget *) gtk_builder_get_object (p_builder, "button_start"), FALSE);
-    
-    // Recuperation  adresse et port adversaire au format chaines caracteres
-    addr_j2=lecture_addr_adversaire();
-    port_j2=lecture_port_adversaire();
-    
-    printf("[Port joueur : %d] Adresse j2 lue : %s\n",port, addr_j2);
-    printf("[Port joueur : %d] Port j2 lu : %s\n", port, port_j2);
-
-    
-    pthread_kill(thr_id, SIGUSR1); 
-  }
-}
-
-********************************************************************* */
-
 /* Fonction appelee lors du clique du bouton Demarrer partie */
 static void clique_connect_adversaire(GtkWidget *b)
 {
 	char* portToConnect = lecture_port_adversaire();
-	/*printf("Othello : Cliqued ! port : %s \n", portToConnect);*/
-	/*fflush(stdout);*/
 
 	//lancer un modele_client et ecouter sur un pipe nomme pour la MAJ de l'interface
 	pid_t pid_client = fork();
@@ -852,8 +820,6 @@ static void clique_connect_adversaire(GtkWidget *b)
        	{
 		char portInChar[6]; 
 		sprintf(portInChar, "%d", port);
-		printf("Othello : Je lance un client sur le port %s\n", portInChar);
-		fflush(stdout);
 
 		if (execlp("./client.o", "client.o", portToConnect, portInChar, "0", NULL)==-1)
 		{
@@ -861,9 +827,6 @@ static void clique_connect_adversaire(GtkWidget *b)
 			strerror(errno);
 			fflush(stdout);
 		}
-		/*printf("\nj'ecoute le pipe et je met a jour l'interface\n");*/
-		/*fflush(stdout);*/
-		/*exit(0);	*/
 	}
 }
 
@@ -1181,15 +1144,7 @@ int main (int argc, char ** argv)
 			port=atoi(argv[1]);
 
 			/* Initialisation du damier de jeu */
-			for(i=0; i<8; i++)
-			{
-				for(j=0; j<8; j++)
-				{
-					damier[i][j]=-1; 
-				}  
-			}
-			
-			gele_damier();
+			reset_interface();
 
 			//here we create the two pipes we need to communicate between the gui the client and the server
 			char serverToGui[] = "serverToGui.fifo";
@@ -1257,7 +1212,6 @@ void * read_pipe_and_modify_gui()
 		exit(EXIT_FAILURE);
 	}
 
-	//
 	char stringToRead[5];
 	int nbBRead;
 	while(1)
@@ -1269,13 +1223,13 @@ void * read_pipe_and_modify_gui()
 		}else if(nbBRead > 0)
 		{
 			stringToRead[nbBRead] = '\0';
-			printf("Othello : cmd recved from pipe : %s : %d Bytes\n", stringToRead, (int) strlen(stringToRead));
-			fflush(stdout);
-			
+		
 			// message treatment
 			// A header is contained in the message as follow :
 			// j-XX means that the message is about the identity of the player (J1 or J2)
 			// c-XX means that the message deals with a position
+			//
+			// Split the received string to separate header and content			
 			char* token = strtok (stringToRead,"-");	
 			char* header = token;
 			token = strtok(NULL, stringToRead);
@@ -1283,7 +1237,14 @@ void * read_pipe_and_modify_gui()
 			token = strtok(NULL, stringToRead);
 
 			if(strcmp(header, "j") == 0){
+
+				// For this header, 3 types of content are possibles :
+				// J2 : the player is suggested to be the player J2
+				// ok : the player accepts to be player J2
+				// no : the player refuses to play
+				
 				if(strcmp(content, "J2") == 0){
+					
 					int accept = confirm_game();
 					
 					char message[5];
@@ -1319,9 +1280,8 @@ void * read_pipe_and_modify_gui()
 				}
 			}
 			else if(strcmp(header, "c") == 0){
-				printf("GUI : recv new move : %s\n", content);
-				fflush(stdout);
 				
+				// traduction of the position
 				char coord[2];
 				int col, lig;
 				int opponent_color = (couleur == 0) ? 1 : 0;
@@ -1329,10 +1289,12 @@ void * read_pipe_and_modify_gui()
 				col = ctoi(content[0]);
 				lig = ctoi(content[1]);
 				
+				// interpretation of the position
 				indexes_to_coord(col, lig, coord);
 				
 				printf("Opponent add piece to : %s\n", coord);
 				fflush(stdout);
+
 				change_img_case(col, lig, opponent_color);
 				
 				// Appel des fonctions d'encadrement
@@ -1358,6 +1320,9 @@ void * read_pipe_and_modify_gui()
 					{
 						affiche_fenetre_perdu();
 					}
+					
+					printf("The game is done !");
+					fflush(stdout);
 		
 					reset_interface();
 					enable_button_start();
@@ -1372,17 +1337,9 @@ void * read_pipe_and_modify_gui()
 			else{
 				printf("Wrong message header ...");
 				fflush(stdout);
+				
 				exit(EXIT_FAILURE);
 			}
-
-			//in this thread we will execute functions like this one 
-			/*set_label_J1(stringToRead);*/
-			
-			/*printf("Othello : stringToRead[0] : %d\n",stringToRead[0] - '0');*/
-			/*fflush(stdout);*/
-			/*printf("Othello : stringToRead[1] : %d\n", stringToRead[1] - '0');*/
-			/*fflush(stdout);*/
-			/*change_img_case(stringToRead[0] - '0',stringToRead[1] - '0', 1);*/
 		}
 	}
 }
@@ -1400,10 +1357,6 @@ void * write_to_client()
 		perror("open");
 		exit(EXIT_FAILURE);
 	}
-
-	//test the pipe 
-	/*char chaineAEcrire[7] = "Bonjour";*/
-	/*write(descGuiToClient, chaineAEcrire, 7);*/
 }
 
 int ctoi(char c)
@@ -1417,43 +1370,46 @@ static void close_game()
 
 	printf("GUI : closing game\n");
 	fflush(stdout);
-
-	printf("GUI : closing the pipes\n");
-	fflush(stdout);
+	
+	/********************* Closing pipes *************************/
 
 	int res;
+	int pipeClosed = 1;
+	
+	printf("GUI : Closing pipes...\n");
+	fflush(stdout);
+	
 	if((res = close(descServerToGui))==-1)
 	{
-		/*perror("GUI : close descServerToGui");*/
-		/*exit(EXIT_FAILURE);*/
-		/*printf("GUI : The pipe for the server is not opened\n");*/
-		/*fflush(stdout);*/
+		printf("Error while closing the pipe Server -> GUI\n");
+		fflush(stdout);
+		
+		pipeClosed = 0;
 	}
 	if((res = close(descGuiToClient))==-1)
 	{
-		/*perror("GUI : close descGuiToClient");*/
-		/*exit(EXIT_FAILURE);*/
-		/*printf("GUI : The pipe for the client is not opened\n");*/
-		/*fflush(stdout);*/
-	}
-
-	/*unlink("serverToGui.fifo");*/
-	/*unlink("guiToClient.fifo");*/
-	/*printf("Fin close\n");*/
-	/*fflush(stdout);*/
+		printf("Error while closing the pipe GUI -> Client\n");
+		fflush(stdout);
+		
+		pipeClosed = 0;
+	}	
 	
+	if(pipeClosed)
+	{
+		printf("GUI : Pipes closed.\n");
+		fflush(stdout);
+	}
+	
+	/********************* Killing process *************************/
 
-	printf("GUI : killing process\n");
+	printf("GUI : Killing process...\n");
 	fflush(stdout);
 	
 	int status = 0;
 	pid_t w;
 	int resk;
-	if (pid == 0)
-	{
-		/*printf("GUI : pid = 0\n");*/
-		/*fflush(stdout);*/
-	}else
+	
+	if (pid != 0)
 	{
 		if (( resk = kill(pid, SIGTERM)) == -1) {
 			perror("kill ");
@@ -1462,16 +1418,10 @@ static void close_game()
 		if ((w = waitpid(pid, &status, 0)) == -1) {
 			printf("GUI : waitpid on pid error\n");
 			fflush(stdout);
-			/*perror("waitpid");*/
-			/*exit(EXIT_FAILURE);*/
 		}
 	}
 
-	if (pidClient == 0)
-	{
-		printf("GUI : pidClient = 0\n");
-		fflush(stdout);
-	}else
+	if (pidClient != 0)
 	{
 		if (( resk = kill(pidClient, SIGTERM)) == -1) {
 			perror("kill ");
@@ -1480,15 +1430,15 @@ static void close_game()
 		if ((w = waitpid(pidClient, &status, 0)) == -1) {
 			printf("GUI : waitpid on pidClient error\n");
 			fflush(stdout);
-			/*perror("waitpid");*/
-			/*exit(EXIT_FAILURE);*/
 		}
-
-		/*printf("GUI : pidClient : %d\n", pidClient);*/
-		/*fflush(stdout);*/
 	}
 
-	printf("GUI : removing the pipes\n");
+	printf("GUI : Process killed.\n");
+	fflush(stdout);
+	
+	/********************* Removing pipes *************************/
+
+	printf("GUI : Removing the pipes...\n");
 	fflush(stdout);
 
 	if((res = remove("./serverToGui.fifo"))==-1)
@@ -1501,7 +1451,12 @@ static void close_game()
 		perror("GUI : remove");
 		exit(EXIT_FAILURE);
 	}
+
+	printf("GUI : Pipes removed.\n");
+	fflush(stdout);
+	
 	printf("Game over\n");
 	fflush(stdout);
+	
 	gtk_main_quit();
 }

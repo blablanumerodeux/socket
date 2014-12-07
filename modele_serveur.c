@@ -10,8 +10,6 @@
 #include <errno.h>
 #include <fcntl.h>
 
-#define PORTS "2058"//replaced by argv[1]
-
 int port; 
 int pid;
 
@@ -41,9 +39,6 @@ int main(int argc, char **argv)
 		return EXIT_FAILURE;
 	}
 
-	/*printf("Server : Serveur globale\n");*/
-	/*printf("Server : Numero de port : %s\n", argv[1]);*/
-	/*fflush(stdout);*/
 	port=atoi(argv[1]);
 
 	rv = getaddrinfo(NULL, argv[1], &hints, &servinfo);
@@ -91,11 +86,7 @@ int main(int argc, char **argv)
 
 		sin_size = sizeof(their_adr);
 		new_fd = accept(sockfd, &their_adr, &sin_size);
-		
-		/*printf("\nServer : Connection incomming\n");*/
-		/*fflush(stdout);*/
 
-		//we need a variable to refuse the conexion in case I'm already in game (means a if statement) 
 		//we create a new processus
 		if(!fork())
 		{
@@ -113,9 +104,6 @@ int main(int argc, char **argv)
 
 			int arguments[2] = {atoi(argv[1]), new_fd};
 
-			/*printf("\nServer : new_fd = \"%d\"\n",new_fd);*/
-			/*fflush(stdout);*/
-
 			//we respond to the oponnent and launch the game !!
 			gameOn(arguments);
 
@@ -123,10 +111,6 @@ int main(int argc, char **argv)
 			exit(0);
 		} 
 	}
-
-	/*printf("\nServer : I do not wait for a connexion anymore\n");*/
-	/*fflush(stdout);*/
-
 	exit(0);
 }
 
@@ -136,29 +120,16 @@ void gameOn(int args[2])
 	int numbytes; 
 	char buf[100];
 
-	/*printf("\nServer : new_fd = \"%d\"\n",args[1]);*/
-	/*fflush(stdout);*/
-
-	/*printf("Server : Creating the reciving process \n");*/
-	/*fflush(stdout);*/
-	
-	/*printf("Server : waiting for info from the oponent\n");*/
-	/*fflush(stdout);*/
-
 	//We recv the first message from the oponent
 	if((numbytes = recv(args[1], buf, 100-1, 0)) == -1)
 	{
 		perror("recv");
 		exit(1);
 	}
-	
-	/*printf("\nServer : Message recved : %s\n", buf);*/
-	/*fflush(stdout);*/
 
 	//the first packet received can be a acknoledgment OR a demande of connexion
 	//we create the client ONLY IF it's a demande of connexion
-	buf[numbytes] = '\0';	
-	/*printf("\nServer : messageReceived : %s\n", buf);*/
+	buf[numbytes] = '\0';
 
 	char* token = strtok (buf,",");	
 	char* cmd = token;
@@ -166,13 +137,9 @@ void gameOn(int args[2])
 	char* portOponent = token;
 	token = strtok(NULL, buf);
 	
-	printf("Server : cmd : %s, port : %s\n", cmd, portOponent);
-	fflush(stdout);
-	
 	if (strcmp(cmd, "demande")==0)
 	{
-		printf("Server : Received a demande of connection\n");
-		/*printf("Server : Creating the client\n");*/
+		printf("Server : Receipt of a demand of connection\n");
 		fflush(stdout);
 
 		char portInChar[6]; 
@@ -192,8 +159,6 @@ void gameOn(int args[2])
 				fflush(stdout);
 				strerror(errno);
 			}
-			/*printf("\n");*/
-			/*fflush(stdout);*/
 		}
 		
 		// We notify the GUI that the current player is J2 (since he receives the demand)
@@ -204,8 +169,7 @@ void gameOn(int args[2])
 	//else it's an acknoledgement 
 	else if (strcmp(cmd, "ack")==0)
 	{
-		printf("Server : Received an ack of connection\n");
-		/*printf("Server : The connexion is established\n");*/
+		printf("Server : Receipt of an ack of connection\n");
 		fflush(stdout);
 
 		descServerToGui = openPipeServerToGui();
@@ -226,14 +190,9 @@ void gameOn(int args[2])
 	descServerToGui = openPipeServerToGui();
 
 	//with this we can notify the gui that the connection is established 
-	/*char chaineAEcrire[7] = "Bonjour";*/
-	/*write(descServerToGui, chaineAEcrire, 7);*/
 	//now we can receive all the moves of the oponent
 	while (1)
 	{
-		/*printf("\nServer : waiting for a message\n");*/
-		/*fflush(stdout);*/
-
 		//we flush the buffer before refill it
 		if((numbytes = recv(args[1], buf, 100-1, 0)) == -1)
 		{
@@ -243,13 +202,8 @@ void gameOn(int args[2])
 		if (numbytes>0)
 		{
 			buf[numbytes] = '\0';	
-			printf("Server : message received : %s, Bytes : %d\n", buf, numbytes);
-			fflush(stdout);
 
-			//here we'll notify the gui about all the moves of the oponent
-			//and a lot more too...
-			//we can manipulate all the gui from here 
-			/*char chaineAEcrire[7] = "ReBonjo";*/
+			//here we'll notify the gui about all the moves of the opponent
 			sendMessageByPipe(descServerToGui, buf);
 		}
 	}
@@ -275,7 +229,7 @@ void sendMessageByPipe(int descPipe, char* msg){
 
 static void stopChild(int signo)
 {
-	printf("Server : Closing server\n");
+	printf("Server : Closing server...\n");
 	fflush(stdout);
 	
 	int res;
@@ -297,8 +251,6 @@ static void stopChild(int signo)
 		if ((w = waitpid(pid, &status, 0)) == -1) {
 			printf("GUI : waitpid on pidClient error\n");
 			fflush(stdout);
-			/*perror("waitpid");*/
-			/*exit(EXIT_FAILURE);*/
 		}
 
 	}
