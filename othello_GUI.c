@@ -1281,7 +1281,7 @@ void * read_pipe_and_modify_gui()
 			token = strtok(NULL, stringToRead);
 			char* content = token;
 			token = strtok(NULL, stringToRead);
-			
+
 			if(strcmp(header, "j") == 0){
 				if(strcmp(content, "J2") == 0){
 					int accept = confirm_game();
@@ -1309,7 +1309,7 @@ void * read_pipe_and_modify_gui()
 				{
 					couleur = 0;
 					init_interface_jeu();
-					
+
 					// Disable connect button
 					disable_button_start();
 				}
