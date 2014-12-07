@@ -1,4 +1,4 @@
-#include <stdio.h>
+﻿#include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <sys/types.h>
@@ -143,6 +143,12 @@ void affiche_fenetre_perdu(void);
 /* Fonction affichant boite de dialogue si action impossible */
 void affiche_fenetre_action_impossible(void);
 
+/* Fonction affichant boite de dialogue si adversaire refuse la partie */
+void affiche_message_refus_jouer(void);
+
+/* Fonction affichant boite de dialogue pour demander une partie */
+int confirm_game(void);
+
 /* Fonction appelee lors du clique du bouton Se connecter */
 static void clique_connect_serveur(GtkWidget *b);
 
@@ -163,6 +169,9 @@ void degele_damier(void);
 
 /* Fonction permettant d'initialiser le plateau de jeu */
 void init_interface_jeu(void);
+
+/* Fonction reinitialisant l'interface apres une partie */
+void reset_interface(void);
 
 /* Fonction reinitialisant la liste des joueurs sur l'interface graphique */
 void reset_liste_joueurs(void);
@@ -193,13 +202,17 @@ void change_img_case(int col, int lig, int couleur_j)
 	indexes_to_coord(col, lig, coord);
 	damier[col][lig] = couleur_j;
 
-	if(couleur_j)
-	{ // image pion blanc
-		gtk_image_set_from_file(GTK_IMAGE(gtk_builder_get_object(p_builder, coord)), "UI_Glade/case_blanc.png");
-	}
-	else
-	{ // image pion noir
-		gtk_image_set_from_file(GTK_IMAGE(gtk_builder_get_object(p_builder, coord)), "UI_Glade/case_noir.png");
+	switch(couleur_j)
+	{
+		case 1: // image pion blanc
+			gtk_image_set_from_file(GTK_IMAGE(gtk_builder_get_object(p_builder, coord)), "UI_Glade/case_blanc.png");
+		break;
+		case 0: // image pion noir
+			gtk_image_set_from_file(GTK_IMAGE(gtk_builder_get_object(p_builder, coord)), "UI_Glade/case_noir.png");
+		break;
+		case -1: // image default
+			gtk_image_set_from_file(GTK_IMAGE(gtk_builder_get_object(p_builder, coord)), "UI_Glade/case_def.png");
+		break;
 	}
 }
 
@@ -288,6 +301,10 @@ void bold_label_player(int player){
 			strcat(label_player, "</b>");
 			
 			gtk_label_set_markup(GTK_LABEL((GtkWidget *) gtk_builder_get_object (p_builder, "label_J1")), label_player);
+			gtk_label_set_markup(GTK_LABEL((GtkWidget *) gtk_builder_get_object (p_builder, "label_J2")), get_label_J2());
+		break;
+		case -1:
+			gtk_label_set_markup(GTK_LABEL((GtkWidget *) gtk_builder_get_object (p_builder, "label_J1")), get_label_J1());
 			gtk_label_set_markup(GTK_LABEL((GtkWidget *) gtk_builder_get_object (p_builder, "label_J2")), get_label_J2());
 		break;
 	}
@@ -606,8 +623,8 @@ static void coup_joueur(GtkWidget *p_case)
 	// Fin de jeu
 	if(nbCoup == 32 || damier_complet() == 1)
 	{
-		if((couleur == 0 && get_score_J2() < get_score_J1()) ||
-		(couleur == 1 && get_score_J2() > get_score_J1()))
+		if((couleur == 0 && get_score_J1() < get_score_J2()) ||
+		(couleur == 1 && get_score_J1() > get_score_J2()))
 		{
 			affiche_fenetre_gagne();
 		}
@@ -616,7 +633,7 @@ static void coup_joueur(GtkWidget *p_case)
 			affiche_fenetre_perdu();
 		}
 		
-		gele_damier();
+		reset_interface();
 		enable_button_start();
 	}
 }
@@ -677,8 +694,21 @@ void affiche_fenetre_gagne(void)
 	GtkWidget *dialog;
 
 	GtkDialogFlags flags = GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT;
+	
+	char message[70];
+	int score_J1 = get_score_J1();
+	int score_J2 = get_score_J2();
+	
+	if(score_J1 > score_J2)
+	{
+		sprintf(message, "Fin de la partie.\n\n Vous avez gagné (%d-%d) !!!", score_J1, score_J2);
+	}
+	else
+	{
+		sprintf(message, "Fin de la partie.\n\n Vous avez gagné (%d-%d) !!!", score_J2, score_J1);
+	}
 
-	dialog = gtk_message_dialog_new(GTK_WINDOW(gtk_builder_get_object(p_builder, "window1")), flags, GTK_MESSAGE_INFO, GTK_BUTTONS_CLOSE, "Fin de la partie.\n\n Vous avez gagné!!!", NULL);
+	dialog = gtk_message_dialog_new(GTK_WINDOW(gtk_builder_get_object(p_builder, "window1")), flags, GTK_MESSAGE_INFO, GTK_BUTTONS_CLOSE, message, NULL);
 	gtk_dialog_run(GTK_DIALOG (dialog));
 
 	gtk_widget_destroy(dialog);
@@ -690,8 +720,21 @@ void affiche_fenetre_perdu(void)
 	GtkWidget *dialog;
 
 	GtkDialogFlags flags = GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT;
+	
+	char message[70];
+	int score_J1 = get_score_J1();
+	int score_J2 = get_score_J2();
+	
+	if(score_J1 < score_J2)
+	{
+		sprintf(message, "Fin de la partie.\n\n Vous avez perdu (%d-%d) !", score_J1, score_J2);
+	}
+	else
+	{
+		sprintf(message, "Fin de la partie.\n\n Vous avez perdu (%d-%d) !", score_J2, score_J1);
+	}
 
-	dialog = gtk_message_dialog_new(GTK_WINDOW(gtk_builder_get_object(p_builder, "window1")), flags, GTK_MESSAGE_INFO, GTK_BUTTONS_CLOSE, "Fin de la partie.\n\n Vous avez perdu!", NULL);
+	dialog = gtk_message_dialog_new(GTK_WINDOW(gtk_builder_get_object(p_builder, "window1")), flags, GTK_MESSAGE_INFO, GTK_BUTTONS_CLOSE, message, NULL);
 	gtk_dialog_run(GTK_DIALOG (dialog));
 
 	gtk_widget_destroy(dialog);
@@ -708,6 +751,41 @@ void affiche_fenetre_action_impossible(void)
 	gtk_dialog_run(GTK_DIALOG (dialog));
 
 	gtk_widget_destroy(dialog);
+}
+
+/* Fonction affichant boite de dialogue si le joueur refuse la partie */
+void affiche_message_refus_jouer(void)
+{
+	GtkWidget *dialog;
+
+	GtkDialogFlags flags = GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT;
+
+	dialog = gtk_message_dialog_new(GTK_WINDOW(gtk_builder_get_object(p_builder, "window1")), flags, GTK_MESSAGE_INFO, GTK_BUTTONS_CLOSE, "Opponent refused to play...\n\n Try another player at your height.", NULL);
+	gtk_dialog_run(GTK_DIALOG (dialog));
+
+	gtk_widget_destroy(dialog);
+}
+
+/* Fonction affichant boite de dialogue pour demander une partie */
+int confirm_game(void)
+{
+	GtkWidget *dialog;
+	
+	GtkDialogFlags flags = GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT;
+	
+	dialog = gtk_message_dialog_new(GTK_WINDOW(gtk_builder_get_object(p_builder, "window1")), flags, GTK_MESSAGE_QUESTION, GTK_BUTTONS_YES_NO, "Another player wanna play with you.\n\n Accept ?");
+
+	switch(gtk_dialog_run(GTK_DIALOG(dialog)))
+	{
+		case GTK_RESPONSE_YES:
+			gtk_widget_destroy(dialog);
+			return 1;
+		break;
+		case GTK_RESPONSE_NO:
+			gtk_widget_destroy(dialog);
+			return 0;
+		break;
+	}
 }
 
 /* Fonction appelee lors du clique du bouton Se connecter */
@@ -762,9 +840,6 @@ static void clique_connect_adversaire(GtkWidget *b)
 	char* portToConnect = lecture_port_adversaire();
 	/*printf("Othello : Cliqued ! port : %s \n", portToConnect);*/
 	/*fflush(stdout);*/
-	
-	couleur = 0; // J1
-	init_interface_jeu();
 
 	//lancer un modele_client et ecouter sur un pipe nomme pour la MAJ de l'interface
 	pid_t pid_client = fork();
@@ -790,9 +865,6 @@ static void clique_connect_adversaire(GtkWidget *b)
 		/*fflush(stdout);*/
 		/*exit(0);	*/
 	}
-	
-	// Disable connect button
-	disable_button_start();
 }
 
 /* Fonction desactivant les cases du damier */
@@ -933,6 +1005,7 @@ void degele_damier(void)
 	gtk_widget_set_sensitive((GtkWidget *) gtk_builder_get_object(p_builder, "eventboxH8"), TRUE);
 }
 
+
 /* Fonction permettant d'initialiser le plateau de jeu */
 void init_interface_jeu(void)
 {
@@ -961,9 +1034,26 @@ void init_interface_jeu(void)
 	nbCoup = 0;
 
 	// Le joueur Noir commence
-	if(couleur == 1){
-		gele_damier();
+	if(couleur == 0){
+		degele_damier();
 	}
+}
+
+/* Fonction reinitialisant l'interface apres une partie */
+void reset_interface(void)
+{
+	int i, j;
+	
+	for(i = 0 ; i < 8 ; i++){
+		for(j = 0 ; j < 8 ; j++){
+			change_img_case(i, j, -1);
+		}
+	}
+	
+	bold_label_player(-1);
+	
+	calcul_scores();
+	gele_damier();
 }
 
 /* Fonction reinitialisant la liste des joueurs sur l'interface graphique */
@@ -1013,7 +1103,6 @@ int main (int argc, char ** argv)
 		{
 			/* Recuparation d'un pointeur sur la fenetre. */
 			GtkWidget * p_win = (GtkWidget *) gtk_builder_get_object (p_builder, "window1");
-
 
 			/* Gestion evenement clic pour chacune des cases du damier */
 			g_signal_connect(gtk_builder_get_object(p_builder, "eventboxA1"), "button_press_event", G_CALLBACK(coup_joueur), NULL);
@@ -1087,8 +1176,6 @@ int main (int argc, char ** argv)
 
 			/* Gestion clic bouton fermeture fenetre */
 			g_signal_connect_swapped(G_OBJECT(p_win), "destroy", G_CALLBACK(close_game), NULL);
-			// TODO : kill server, client & close, remove pipes
-
 
 			/* Recuperation numero port donne en parametre */
 			port=atoi(argv[1]);
@@ -1101,8 +1188,8 @@ int main (int argc, char ** argv)
 					damier[i][j]=-1; 
 				}  
 			}
-
-			//change_img_case(0,0,0);
+			
+			gele_damier();
 
 			//here we create the two pipes we need to communicate between the gui the client and the server
 			char serverToGui[] = "serverToGui.fifo";
@@ -1139,7 +1226,6 @@ int main (int argc, char ** argv)
 			}
 			else
 			{
-
 				//we override the processe 
 				if (execlp("./server.o", "server.o", argv[1], NULL))
 				{
@@ -1198,35 +1284,38 @@ void * read_pipe_and_modify_gui()
 
 			if(strcmp(header, "j") == 0){
 				if(strcmp(content, "J2") == 0){
+					int accept = confirm_game();
+					
+					char message[5];
 
-					GtkDialogFlags flags = GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT;
-					GtkWidget *dialog = gtk_message_dialog_new(GTK_WINDOW(gtk_builder_get_object(p_builder, "window1")), flags, GTK_MESSAGE_QUESTION, GTK_BUTTONS_YES_NO, "Jouer");
-					switch(gtk_dialog_run(GTK_DIALOG(dialog)))
+					if(accept == 1)
 					{
-						case GTK_RESPONSE_YES:
-							/* do 'Yes' stuff */
-							couleur = 1;
-							init_interface_jeu();
-
-							// Disable connect button
-							disable_button_start();
-
-							break;
-						case GTK_RESPONSE_NO:
-							/* do 'No' stuff */
-							break;
-						default:
-							break;
+						couleur = 1;
+						init_interface_jeu();
+						
+						// Disable connect button
+						disable_button_start();
+						
+						strcpy(message, "j-ok");
+						write(descGuiToClient, message, strlen(message));
 					}
-					/* You're responsible for destroying the dialog after it's been run */
-					gtk_widget_destroy(dialog);
+					else
+					{
+						strcpy(message, "j-no");
+						write(descGuiToClient, message, strlen(message));
+					}
 				}
-				else{
+				else if(strcmp(content, "ok") == 0)
+				{
 					couleur = 0;
 					init_interface_jeu();
 
 					// Disable connect button
 					disable_button_start();
+				}
+				else if(strcmp(content, "no") == 0)
+				{
+					affiche_message_refus_jouer();
 				}
 			}
 			else if(strcmp(header, "c") == 0){
@@ -1256,9 +1345,29 @@ void * read_pipe_and_modify_gui()
 				encadrement_SE(col, lig, opponent_color);
 				encadrement_SO(col, lig, opponent_color);
 
-				calcul_scores();
-				bold_label_player(couleur);
-				degele_damier();
+				// Fin de jeu
+				if(nbCoup == 31 || damier_complet() == 1)
+				{
+					calcul_scores();
+					if((couleur == 0 && get_score_J1() < get_score_J2()) ||
+					(couleur == 1 && get_score_J1() > get_score_J2()))
+					{
+						affiche_fenetre_gagne();
+					}
+					else
+					{
+						affiche_fenetre_perdu();
+					}
+		
+					reset_interface();
+					enable_button_start();
+				}
+				else
+				{
+					calcul_scores();
+					bold_label_player(couleur);
+					degele_damier();
+				}
 			}
 			else{
 				printf("Wrong message header ...");
