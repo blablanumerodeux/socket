@@ -1,4 +1,4 @@
-#include <stdio.h>
+﻿#include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <sys/types.h>
@@ -12,6 +12,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <X11/Xlib.h>
 
 int MAXDATASIZE = 100;
 int descGuiToClient;
@@ -141,6 +142,12 @@ void affiche_fenetre_perdu(void);
 
 /* Fonction affichant boite de dialogue si action impossible */
 void affiche_fenetre_action_impossible(void);
+
+/* Fonction affichant boite de dialogue si adversaire refuse la partie */
+void affiche_message_refus_jouer(void);
+
+/* Fonction affichant boite de dialogue pour demander une partie */
+int confirm_game(void);
 
 /* Fonction appelee lors du clique du bouton Se connecter */
 static void clique_connect_serveur(GtkWidget *b);
@@ -746,6 +753,41 @@ void affiche_fenetre_action_impossible(void)
 	gtk_widget_destroy(dialog);
 }
 
+/* Fonction affichant boite de dialogue si le joueur refuse la partie */
+void affiche_message_refus_jouer(void)
+{
+	GtkWidget *dialog;
+
+	GtkDialogFlags flags = GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT;
+
+	dialog = gtk_message_dialog_new(GTK_WINDOW(gtk_builder_get_object(p_builder, "window1")), flags, GTK_MESSAGE_INFO, GTK_BUTTONS_CLOSE, "Opponent refused to play...\n\n Try another player at your height.", NULL);
+	gtk_dialog_run(GTK_DIALOG (dialog));
+
+	gtk_widget_destroy(dialog);
+}
+
+/* Fonction affichant boite de dialogue pour demander une partie */
+int confirm_game(void)
+{
+	GtkWidget *dialog;
+	
+	GtkDialogFlags flags = GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT;
+	
+	dialog = gtk_message_dialog_new(GTK_WINDOW(gtk_builder_get_object(p_builder, "window1")), flags, GTK_MESSAGE_QUESTION, GTK_BUTTONS_YES_NO, "Another player wanna play with you.\n\n Accept ?");
+
+	switch(gtk_dialog_run(GTK_DIALOG(dialog)))
+	{
+		case GTK_RESPONSE_YES:
+			gtk_widget_destroy(dialog);
+			return 1;
+		break;
+		case GTK_RESPONSE_NO:
+			gtk_widget_destroy(dialog);
+			return 0;
+		break;
+	}
+}
+
 /* Fonction appelee lors du clique du bouton Se connecter */
 static void clique_connect_serveur(GtkWidget *b)
 {
@@ -798,9 +840,6 @@ static void clique_connect_adversaire(GtkWidget *b)
 	char* portToConnect = lecture_port_adversaire();
 	/*printf("Othello : Cliqued ! port : %s \n", portToConnect);*/
 	/*fflush(stdout);*/
-	
-	couleur = 0; // J1
-	init_interface_jeu();
 
 	//lancer un modele_client et ecouter sur un pipe nomme pour la MAJ de l'interface
 	pid_t pid_client = fork();
@@ -826,9 +865,6 @@ static void clique_connect_adversaire(GtkWidget *b)
 		/*fflush(stdout);*/
 		/*exit(0);	*/
 	}
-	
-	// Disable connect button
-	disable_button_start();
 }
 
 /* Fonction desactivant les cases du damier */
@@ -1052,6 +1088,7 @@ int main (int argc, char ** argv)
 	}
 
 	/* Initialisation de GTK+ */
+	XInitThreads();
 	gtk_init (& argc, & argv);
 
 	/* Creation d'un nouveau GtkBuilder */
@@ -1247,18 +1284,38 @@ void * read_pipe_and_modify_gui()
 			
 			if(strcmp(header, "j") == 0){
 				if(strcmp(content, "J2") == 0){
-					couleur = 1;
-					init_interface_jeu();
-		
-					// Disable connect button
-					disable_button_start();
+					int accept = confirm_game();
+					
+					char message[5];
+
+					if(accept == 1)
+					{
+						couleur = 1;
+						init_interface_jeu();
+						
+						// Disable connect button
+						disable_button_start();
+						
+						strcpy(message, "j-ok");
+						write(descGuiToClient, message, strlen(message));
+					}
+					else
+					{
+						strcpy(message, "j-no");
+						write(descGuiToClient, message, strlen(message));
+					}
 				}
-				else{
+				else if(strcmp(content, "ok") == 0)
+				{
 					couleur = 0;
 					init_interface_jeu();
 					
 					// Disable connect button
 					disable_button_start();
+				}
+				else if(strcmp(content, "no") == 0)
+				{
+					affiche_message_refus_jouer();
 				}
 			}
 			else if(strcmp(header, "c") == 0){
@@ -1291,6 +1348,7 @@ void * read_pipe_and_modify_gui()
 				// Fin de jeu
 				if(nbCoup == 31 || damier_complet() == 1)
 				{
+					calcul_scores();
 					if((couleur == 0 && get_score_J1() < get_score_J2()) ||
 					(couleur == 1 && get_score_J1() > get_score_J2()))
 					{
