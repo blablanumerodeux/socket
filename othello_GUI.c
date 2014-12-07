@@ -1206,9 +1206,9 @@ void * read_pipe_and_modify_gui()
 			// c-XX means that the message deals with a position
 			char* token = strtok (stringToRead,"-");	
 			char* header = token;
-			token = strtok(NULL, stringToRead);
+			token = strtok(NULL, "-");
 			char* content = token;
-			token = strtok(NULL, stringToRead);
+			token = strtok(NULL, "-");
 
 			if(strcmp(header, "j") == 0){
 				if(strcmp(content, "J2") == 0){
@@ -1459,15 +1459,37 @@ void * connect_server()
 
 	freeaddrinfo(servinfo);       // Libère structure
 
+	char message[30];
+	strcpy(message, "c,ip,port,");
+	strcat(message, "login");
+
+	//we send our ip, port and login
+	send(sockfd, message, strlen(message), 0);
+
 	if((numbytes = recv(sockfd, buf, 100-1, 0)) == -1) 
 	{
 		perror("recv");
 		exit(1);
 	}
+	buf[numbytes] = '\0';
 
 	printf("Message reçu : %s\n",buf);
+	fflush(stdout);
 
-	/*void affich_joueur(char *login, char *adresse, char *port)*/
+	char* token = strtok (buf,","); 
+	char* entete = token;
+	token = strtok(NULL, ",");
+	char* ip = token;
+	token = strtok(NULL, ",");
+	char* port = token;
+	token = strtok(NULL, ",");
+	char* login = token;
+	token = strtok(NULL, ",");
+
+	printf("entete = %s, ip = %s, port = %s, login = %s, \n",entete, ip, port, login);
+	fflush(stdout);
+
+	/*affich_joueur(login, ip, port);*/
 
 	close(sockfd);
 }

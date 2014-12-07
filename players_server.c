@@ -61,18 +61,50 @@ int main(int argc, char **argv)
 	while(1)
 	{
 		sin_size = sizeof(their_adr);
+		
+		//waiting for a new connection 
+		printf("Waiting for a new connection\n");
+		fflush(stdout);
+		
 		new_fd = accept(sockfd, &their_adr, &sin_size);
 
 		if(!fork())
 		{
 			close(sockfd);
-			send(new_fd, "Hello!", 6, 0);
-			close(new_fd);
+
+			int numbytes;
+			char buf[100];
+			if((numbytes = recv(new_fd, buf, 100-1, 0)) == -1)  
+			{    
+				perror("recv");
+				exit(1);
+			}
+			buf[numbytes] = '\0';
+
+			printf("%s\n",buf);
+			fflush(stdout);
+
+			//send him the full stack
+			char message[30];
+			strcpy(message, "c,ip,port,");
+			strcat(message, "login");
+			send(new_fd, message, strlen(message), 0);
 			
+			//and add him to the stack
+			char* token = strtok (buf,","); 
+			char* entete = token;
+			token = strtok(NULL, ",");
+			char* ip = token;
+			token = strtok(NULL, ",");
+			char* port = token;
+			token = strtok(NULL, ",");
+			char* login = token;
+			token = strtok(NULL, ",");
+
+			close(new_fd);
 			exit(0);
 		} 
 	}
-
 	exit(0);
 }
 
