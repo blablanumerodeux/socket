@@ -1459,13 +1459,18 @@ void * connect_server()
 
 	freeaddrinfo(servinfo);       // Libère structure
 
-	char message[30];
-	strcpy(message, "c,ip,port,");
-	strcat(message, "login");
-
 	//we send our ip, port and login
+	char message[100];
+	strcpy(message, "c,");
+	strcat(message, lecture_addr_serveur());
+	strcat(message, ",");
+	strcat(message, lecture_port_serveur());
+	strcat(message, ",");
+	strcat(message, lecture_login());
+	strcat(message, ",");
 	send(sockfd, message, strlen(message), 0);
 
+	//and we recv the list of all the players
 	if((numbytes = recv(sockfd, buf, 100-1, 0)) == -1) 
 	{
 		perror("recv");
@@ -1486,6 +1491,8 @@ void * connect_server()
 	char* login = token;
 	token = strtok(NULL, ",");
 
+	//verify that the token is not null 
+	//if he is so malloc
 	printf("entete = %s, ip = %s, port = %s, login = %s, \n",entete, ip, port, login);
 	fflush(stdout);
 

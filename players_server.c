@@ -7,9 +7,22 @@
 #include <netdb.h>
 #include <netdb.h>
 #include <signal.h>
+#include <pthread.h>
 
 
 #define PORTS "2058"
+
+void* client_thread(void* args);
+
+struct player 
+{
+	char  ip[50];
+	char port[50];
+	char  login[50];
+	int   status;
+};    
+struct player players_list[10];
+int next_player_number =0;
 
 int main(int argc, char **argv)
 {
@@ -68,43 +81,80 @@ int main(int argc, char **argv)
 		
 		new_fd = accept(sockfd, &their_adr, &sin_size);
 
-		if(!fork())
-		{
-			close(sockfd);
-
-			int numbytes;
-			char buf[100];
-			if((numbytes = recv(new_fd, buf, 100-1, 0)) == -1)  
-			{    
-				perror("recv");
-				exit(1);
-			}
-			buf[numbytes] = '\0';
-
-			printf("%s\n",buf);
-			fflush(stdout);
-
-			//send him the full stack
-			char message[30];
-			strcpy(message, "c,ip,port,");
-			strcat(message, "login");
-			send(new_fd, message, strlen(message), 0);
-			
-			//and add him to the stack
-			char* token = strtok (buf,","); 
-			char* entete = token;
-			token = strtok(NULL, ",");
-			char* ip = token;
-			token = strtok(NULL, ",");
-			char* port = token;
-			token = strtok(NULL, ",");
-			char* login = token;
-			token = strtok(NULL, ",");
-
-			close(new_fd);
-			exit(0);
-		} 
+		pthread_t thread_client;
+		int desc_thread_client= pthread_create(&thread_client, NULL, client_thread, &new_fd);
 	}
 	exit(0);
 }
 
+void * client_thread(void* args)
+{
+
+	/*int* new_fd_pointer = args;*/
+	/*int new_fd = *new_fd_pointer;*/
+	int new_fd = *(int*)args;
+
+	int numbytes;
+	char buf[100];
+	if((numbytes = recv(new_fd, buf, 100-1, 0)) == -1)  
+	{    
+		perror("recv");
+		exit(1);
+	}
+	buf[numbytes] = '\0';
+
+	printf("%s\n",buf);
+	fflush(stdout);
+
+	//send him the full stack
+	char message[100];
+	strcpy(message, "c,");
+	int i = 0;
+	for (i=0;i<next_player_number;i++){
+		strcat(message, players_list[i].ip);
+		strcat(message, ",");
+		strcat(message, players_list[i].port);
+		strcat(message, ",");
+		strcat(message, players_list[i].login);
+	}
+	send(new_fd, message, strlen(message), 0);
+
+	//and add him to the stack
+	char* token = strtok (buf,","); 
+	char* entete = token;
+	token = strtok(NULL, ",");
+	char* ip = token;
+	token = strtok(NULL, ",");
+	char* port = token;
+	token = strtok(NULL, ",");
+	char* login = token;
+	token = strtok(NULL, ",");
+
+	strcpy(players_list[next_player_number].ip, ip);
+	/*printf("ip : %s\n",ip);*/
+	/*fflush(stdout);*/
+	if (ip==NULL)
+	{
+		/*strcpy(ip, "");*/
+		ip = (char*)malloc(sizeof(char*));
+	}
+	if (port==NULL)
+	{
+		/*strcpy(port, "");*/
+		port = (char*)malloc(sizeof(char*));
+	}
+	if (login==NULL)
+	{
+		/*strcpy(login, "");*/
+		login = (char*)malloc(sizeof(char*));
+	}
+	/*printf("port : %s\n",port);*/
+	/*fflush(stdout);*/
+	strcpy(players_list[next_player_number].port, port);
+	/*printf("login : %s\n",login);*/
+	/*fflush(stdout);*/
+	strcpy(players_list[next_player_number].login, login);
+	players_list[next_player_number].status = 1;
+
+	next_player_number++;
+}

@@ -1,10 +1,10 @@
 all: playersserver mainserver client gui clean copy_executable
 
 playersserver: players_server.c
-	gcc players_server.c -o players_server.o
+	gcc players_server.c -o players_server.o -lpthread
 
 mainserver: modele_serveur.c
-	gcc modele_serveur.c -o server.o 
+	gcc -lpthread modele_serveur.c -o server.o 
 
 client: modele_client.c
 	gcc modele_client.c -o client.o 
