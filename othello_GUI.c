@@ -1461,6 +1461,13 @@ void * connect_server()
 
 	//we send our ip, port and login
 	char message[100];
+	if (strcmp(lecture_addr_serveur(), "")==0 || strcmp(lecture_port_serveur(), "")==0 || strcmp(lecture_login(), "")==0)
+	{
+		//TODO add an error message on the interface
+		printf("a field is empty %s, %s, %s,\n", lecture_addr_serveur(), lecture_port_serveur(), lecture_login());
+		fflush(stdout);
+		return NULL;
+	}
 	strcpy(message, "c,");
 	strcat(message, lecture_addr_serveur());
 	strcat(message, ",");
@@ -1470,7 +1477,11 @@ void * connect_server()
 	strcat(message, ",");
 	send(sockfd, message, strlen(message), 0);
 
+	printf("waiting for an answer from the server \n");
+	fflush(stdout);
+
 	//and we recv the list of all the players
+	//we normaly have to do a while loop
 	if((numbytes = recv(sockfd, buf, 100-1, 0)) == -1) 
 	{
 		perror("recv");
@@ -1481,23 +1492,51 @@ void * connect_server()
 	printf("Message reçu : %s\n",buf);
 	fflush(stdout);
 
-	char* token = strtok (buf,","); 
-	char* entete = token;
+	char* token = "";
+	char* entete = "";
+	token = strtok (buf,","); 
+	/*if (strcmp(token, "c")==0){*/
+	entete = token;
 	token = strtok(NULL, ",");
-	char* ip = token;
-	token = strtok(NULL, ",");
-	char* port = token;
-	token = strtok(NULL, ",");
-	char* login = token;
-	token = strtok(NULL, ",");
+	/*}*/
+	while (strcmp(token, "c")!=0)
+	{
+		char* ip = token;
+		token = strtok(NULL, ",");
+		char* port = token;
+		token = strtok(NULL, ",");
+		char* login = token;
+		token = strtok(NULL, ",");
 
-	//verify that the token is not null 
-	//if he is so malloc
-	printf("entete = %s, ip = %s, port = %s, login = %s, \n",entete, ip, port, login);
-	fflush(stdout);
+		//verify that the token is not null 
+		//if he is so malloc
+		if (ip==NULL)
+		{
+			ip = (char*)malloc(sizeof(char*));
+			strcpy(ip, "");
+		}
+		if (port==NULL)
+		{
+			port = (char*)malloc(sizeof(char*));
+			strcpy(port, "");
+		}
+		if (login==NULL)
+		{
+			login = (char*)malloc(sizeof(char*));
+			strcpy(login, "");
+		}
+		if (token==NULL)
+		{
+			token = (char*)malloc(sizeof(char*));
+			strcpy(token, "");
+		}
+		
+		printf("entete = %s, ip = %s, port = %s, login = %s, token = %s\n",entete, ip, port, login,token);
+		fflush(stdout);
+		affich_joueur(login, ip, port);
+	}
 
-	/*affich_joueur(login, ip, port);*/
 
-	close(sockfd);
+	/*close(sockfd);*/
 }
 

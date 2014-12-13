@@ -103,7 +103,7 @@ void * client_thread(void* args)
 	}
 	buf[numbytes] = '\0';
 
-	printf("%s\n",buf);
+	printf("new player : %s\n",buf);
 	fflush(stdout);
 
 	//send him the full stack
@@ -116,13 +116,20 @@ void * client_thread(void* args)
 		strcat(message, players_list[i].port);
 		strcat(message, ",");
 		strcat(message, players_list[i].login);
+		strcat(message, ",");
 	}
-	send(new_fd, message, strlen(message), 0);
+	strcat(message, "c");
+	if (strlen(message)>4)
+	{
+		printf("sent message : %s\n",message);
+		fflush(stdout);
+		send(new_fd, message, strlen(message), 0);
+	}
 
 	//and add him to the stack
 	char* token = strtok (buf,","); 
-	char* entete = token;
 	token = strtok(NULL, ",");
+	char* entete = token;
 	char* ip = token;
 	token = strtok(NULL, ",");
 	char* port = token;
@@ -130,9 +137,6 @@ void * client_thread(void* args)
 	char* login = token;
 	token = strtok(NULL, ",");
 
-	strcpy(players_list[next_player_number].ip, ip);
-	/*printf("ip : %s\n",ip);*/
-	/*fflush(stdout);*/
 	if (ip==NULL)
 	{
 		/*strcpy(ip, "");*/
@@ -148,6 +152,9 @@ void * client_thread(void* args)
 		/*strcpy(login, "");*/
 		login = (char*)malloc(sizeof(char*));
 	}
+	/*printf("ip : %s\n",ip);*/
+	/*fflush(stdout);*/
+	strcpy(players_list[next_player_number].ip, ip);
 	/*printf("port : %s\n",port);*/
 	/*fflush(stdout);*/
 	strcpy(players_list[next_player_number].port, port);
@@ -158,3 +165,7 @@ void * client_thread(void* args)
 
 	next_player_number++;
 }
+	/*printf("ip : %s\n",ip);*/
+	/*printf("ip : %s\n",ip);*/
+	/*fflush(stdout);*/
+	/*fflush(stdout);*/
