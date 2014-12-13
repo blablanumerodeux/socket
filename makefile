@@ -13,8 +13,8 @@ gui: othello_GUI.c
 	gcc -lpthread -lX11 -o othello_GUI.o othello_GUI.c $(shell pkg-config --cflags --libs gtk+-3.0 x11)
 
 clean:
-	rm -rf *.fifo
-	rm ../JB/*.fifo # TODO update the path
+	rm ../OthelloBis/*.fifo # TODO update the path
+	rm ../OthelloBis/*.o # TODO update the path
 	
 copy_executable:
 	cp *.o ../JB/ # TODO update the path

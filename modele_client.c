@@ -10,7 +10,6 @@
 #include <signal.h>
 
 #define SERVEUR "127.0.0.1"
-#define PORTS "2058" //replaced by argv[1]
 
 static void stopChild(int signo);
 
@@ -29,16 +28,12 @@ int main(int argc, char **argv)
 	hints.ai_socktype = SOCK_STREAM;
 	rv = getaddrinfo(SERVEUR, argv[1], &hints, &servinfo);
 
-	/*printf("Client\n");*/
-	/*fflush(stdout);*/
-
 	port = atoi(argv[2]);
 
 	if (signal(SIGTERM, stopChild) == SIG_ERR) {
 		printf("Could not attach signal handler\n");
 		return EXIT_FAILURE;
 	}
-
 
 	if(rv != 0) 
 	{
@@ -47,7 +42,7 @@ int main(int argc, char **argv)
 	}
 
 
-	// Création  socket  et  attachement
+	// Création  socket et attachement
 	for(p = servinfo; p != NULL; p = p->ai_next) 
 	{
 		if((sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1)
@@ -59,7 +54,6 @@ int main(int argc, char **argv)
 		{
 			close(sockfd);
 			perror("client: connect");
-			//TODO here we send an command to the interface pipe to tell the connection failed
 			continue;
 		}
 
@@ -74,16 +68,6 @@ int main(int argc, char **argv)
 
 	freeaddrinfo(servinfo); 	// Libère structure
 
-	/*if((numbytes = recv(sockfd, buf, 100-1, 0)) == -1)*/
-	/*{*/
-	/*perror("recv");*/
-	/*exit(1);*/
-	/*}*/
-
-	/*printf("\nClient : Message reçu : %s\n",buf);*/
-	/*printf("Client : Envoie d'un message au serveur\n");*/
-	/*fflush(stdout);*/
-
 	char portInChar[6]; 
 	sprintf(portInChar, "%d", port);
 
@@ -96,7 +80,7 @@ int main(int argc, char **argv)
 	{
 		send(sockfd, message, strlen(message), 0);
 	}
-	//else send this 
+	//else send acknoledgment 
 	else if (strcmp(argv[3], "1")==0)
 	{
 		send(sockfd, "ack", 3, 0);
@@ -121,24 +105,9 @@ int main(int argc, char **argv)
 			exit(EXIT_FAILURE);
 		}else if(nbBRead > 0)
 		{
-			stringToRead[nbBRead] = '\0'; 
-			printf("Client : cmd recved from pipe : %s : %d Bytes\n", stringToRead, (int) strlen(stringToRead));
-			fflush(stdout);
-
-			/*printf("\nServer : messageReceived : %s\n", buf);*/
-
-			/*char* token = strtok (stringToRead,",");*/
-			/*char* cmd = token;*/
-			/*token = strtok(NULL, stringToRead);*/
-			/*if (strcmp(cmd, "1")==0)*/
-			/*{*/
-			/*char* portOponent = token;*/
-			/*token = strtok(NULL, buf);*/
-			/*}*/
-
+			stringToRead[nbBRead] = '\0';
 			send(sockfd, stringToRead, strlen(stringToRead), 0);
 		}
-
 	}
 
 	close(sockfd);
@@ -147,7 +116,7 @@ int main(int argc, char **argv)
 
 static void stopChild(int signo)
 {
-	printf("Client : Closing client\n");
+	printf("Client : Closing client...\n");
 	fflush(stdout);
 
 	int res;
@@ -159,6 +128,6 @@ static void stopChild(int signo)
 
 	printf("Client : Stopped\n");
 	fflush(stdout);
+
 	exit(0);
 }
-
