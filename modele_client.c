@@ -42,7 +42,7 @@ int main(int argc, char **argv)
 	}
 
 
-	// Création  socket et attachement
+	// Creating socket and linking
 	for(p = servinfo; p != NULL; p = p->ai_next) 
 	{
 		if((sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1)
@@ -66,7 +66,7 @@ int main(int argc, char **argv)
 		return 2;
 	}
 
-	freeaddrinfo(servinfo); 	// Libère structure
+	freeaddrinfo(servinfo); 	// free struct
 
 	char portInChar[6]; 
 	sprintf(portInChar, "%d", port);
@@ -75,12 +75,12 @@ int main(int argc, char **argv)
 	strcpy(message, "demande,");
 	strcat(message, portInChar);
 
-	//if its a demande send this 
+	// if it is a demand, send this ...
 	if (strcmp(argv[3], "0")==0)
 	{
 		send(sockfd, message, strlen(message), 0);
 	}
-	//else send acknoledgment 
+	// else send an acknoledgment
 	else if (strcmp(argv[3], "1")==0)
 	{
 		send(sockfd, "ack", 3, 0);
@@ -90,11 +90,11 @@ int main(int argc, char **argv)
 
 	if((descGuiToClient= open(guiToClient, O_RDONLY)) == -1) 
 	{   
-		fprintf(stderr, "Impossible d'ouvrir la sortie du tube nommé.\n");
+		fprintf(stderr, "Unable to open the exit of the named pipe.\n");
 		exit(EXIT_FAILURE);
 	}   
 
-	//we now obey to the pipe messages
+	// we now obey to the pipe messages
 	char stringToRead[7];
 	int nbBRead;
 	while(1)

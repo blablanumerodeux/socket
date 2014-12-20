@@ -49,7 +49,7 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	// Création  socket  et  attachement
+	// Creating socket and linking
 	for(p = servinfo; p != NULL; p = p->ai_next) 
 	{
 		if ((sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1)
@@ -73,10 +73,9 @@ int main(int argc, char **argv)
 		return 2;
 	}
 
-	freeaddrinfo(servinfo); 	// Libère structure
+	freeaddrinfo(servinfo); 	// free struct
 
 	listen(sockfd, 5);
-	/*signal(SIGCHLD, SIG_IGN);*/
 
 	while(1)
 	{
@@ -87,24 +86,24 @@ int main(int argc, char **argv)
 		sin_size = sizeof(their_adr);
 		new_fd = accept(sockfd, &their_adr, &sin_size);
 
-		//we create a new processus
+		// We create a new processus
 		if(!fork())
 		{
-			//i am your father
-			//for now we only accept one connection
-			//we should use the select methode of the socket
-			//we quit the while
+			// I am your father
+			// for now we only accept one connection
+			// we should use the select method of the socket
+			// we quit the while
 			break;
 		}
 		else
 		{
-			//we stop receiving from the socket of the main server
-			//because the son don't need to access the main socket
+			// We stop receiving from the socket of the main server
+			// because the son doesn't need to access to the main socket
 			close(sockfd);
 
 			int arguments[2] = {atoi(argv[1]), new_fd};
 
-			//we respond to the oponnent and launch the game !!
+			// We respond to the opponent and launch the game !!
 			gameOn(arguments);
 
 			close(new_fd);
@@ -120,15 +119,15 @@ void gameOn(int args[2])
 	int numbytes; 
 	char buf[100];
 
-	//We recv the first message from the oponent
+	// We receive the first message from the opponent
 	if((numbytes = recv(args[1], buf, 100-1, 0)) == -1)
 	{
 		perror("recv");
 		exit(1);
 	}
 
-	//the first packet received can be a acknoledgment OR a demande of connexion
-	//we create the client ONLY IF it's a demande of connexion
+	// The first packet we receive can be either an acknoledgment or a demand of connection
+	// so, we create the client ONLY IF it's a demand of connection
 	buf[numbytes] = '\0';
 
 	char* token = strtok (buf,",");	
@@ -144,11 +143,11 @@ void gameOn(int args[2])
 
 		char portInChar[6]; 
 		sprintf(portInChar, "%d", port);
-		//we send a ack
+		// We send an acknoledgment
 		pid_t pid_serv = fork();
 		if(pid_serv != 0)
 		{       
-			//I am the father
+			// I am the father
 			pid = (int) pid_serv;
 		}
 		else
@@ -166,7 +165,7 @@ void gameOn(int args[2])
 		char msg[5] = "j-J2";						// set the message to send
 		sendMessageByPipe(descServerToGui, msg);	// process to the sending
 	}
-	//else it's an acknoledgement 
+	// else it's an acknoledgement 
 	else if (strcmp(cmd, "ack")==0)
 	{
 		printf("Server : Receipt of an ack of connection\n");
@@ -178,7 +177,7 @@ void gameOn(int args[2])
 	{
 		printf("Server : Wrong message : %s \n", buf);
 		fflush(stdout);
-		//send a message to the interface and exit properly 
+		//TODO : send a message to the interface and exit properly 
 		exit(0);
 	}
 
@@ -186,14 +185,14 @@ void gameOn(int args[2])
 	printf("Server : Connected\n");
 	fflush(stdout);
 
-	//we open a pipe to send commands to the gui
+	// We open a pipe to send commands to the gui
 	descServerToGui = openPipeServerToGui();
 
-	//with this we can notify the gui that the connection is established 
-	//now we can receive all the moves of the oponent
+	// With this we can notify the gui that the connection is established 
+	// now we can receive all the moves of the opponent
 	while (1)
 	{
-		//we flush the buffer before refill it
+		// We flush the buffer before refilling it
 		if((numbytes = recv(args[1], buf, 100-1, 0)) == -1)
 		{
 			perror("recv");
@@ -203,18 +202,18 @@ void gameOn(int args[2])
 		{
 			buf[numbytes] = '\0';	
 
-			//here we'll notify the gui about all the moves of the opponent
+			// Here we'll notify the gui about all the moves of the opponent
 			sendMessageByPipe(descServerToGui, buf);
 		}
 	}
 }
 
 int openPipeServerToGui(){
-	//we open a pipe to send commands to the gui
+	// We open a pipe to send commands to the gui
 	char serverToGui[] = "serverToGui.fifo";
 	if((descServerToGui = open(serverToGui, O_WRONLY)) == -1) 
 	{
-		fprintf(stderr, "Impossible d'ouvrir l'entrée du tube nommé.\n");
+		fprintf(stderr, "Unable to open the entrance of the named pipe.\n");
 		perror("open");
 		exit(EXIT_FAILURE);
 	}

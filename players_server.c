@@ -23,7 +23,7 @@ struct player
 	int   status;
 };    
 struct player players_list[10];
-int next_player_number =0;
+int next_player_number = 0;
 
 int main(int argc, char **argv)
 {
@@ -43,7 +43,7 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	// Création  socket  et  attachement
+	// Creating socket and linking
 	for(p = servinfo; p != NULL; p = p->ai_next) 
 	{
 		if ((sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1)
@@ -67,7 +67,7 @@ int main(int argc, char **argv)
 		return 2;
 	}
 
-	freeaddrinfo(servinfo); 	// Libère structure
+	freeaddrinfo(servinfo); 	// free struct
 
 	listen(sockfd, 5);
 	signal(SIGCHLD, SIG_IGN);
@@ -101,7 +101,7 @@ void * client_thread(void* args)
 	}
 	buf[numbytes] = '\0';
 
-	printf("new player : %s\n",buf);
+	printf("New player : %s\n",buf);
 	fflush(stdout);
 
 	// Add player to the stack
@@ -139,7 +139,7 @@ void * client_thread(void* args)
 		next_player_number++;
 	}
 	
-	//send him the full stack
+	// Send him the full stack
 	char message[100];
 	strcpy(message, "c,");
 	int i = 0;
