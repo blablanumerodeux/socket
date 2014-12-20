@@ -22,6 +22,7 @@ int descServerToGui;
 int damier[8][8];	// tableau associe au damier
 int couleur;		// 0 : pour noir, 1 : pour blanc
 int nbCoup;			// Nombre de coup joué
+int msgConnect = 0; // Message connexion établie montré déjà une fois (1) ou pas (0)
 
 int port;		// numero port passe a l'appel
 
@@ -126,8 +127,17 @@ void affiche_fenetre_gagne(void);
 /* Fonction affichant boite de dialogue si partie perdue */
 void affiche_fenetre_perdu(void);
 
+/* Fonction affichant boite de dialogue pour confirmer la connexion au serveur de joueurs */
+void affiche_connexion_etablie(void);
+
 /* Fonction affichant boite de dialogue si action impossible */
 void affiche_fenetre_action_impossible(void);
+
+/* Fonction affichant boite de dialogue si tous les champs de connexion ne sont pas renseignes */
+void affiche_fenetre_connexion_impossible(void);
+
+/* Fonction affichant boite de dialogue si le joueur renseigne son propre port */
+void affiche_fenetre_demarrer_partie_impossible(void);
 
 /* Fonction affichant boite de dialogue si adversaire refuse la partie */
 void affiche_message_refus_jouer(void);
@@ -736,6 +746,24 @@ void affiche_fenetre_perdu(void)
 	gtk_widget_destroy(dialog);
 }
 
+/* Fonction affichant boite de dialogue pour confirmer la connexion au serveur de joueurs */
+void affiche_connexion_etablie(void)
+{
+	if(msgConnect == 0)
+	{
+		GtkWidget *dialog;
+
+		GtkDialogFlags flags = GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT;
+
+		dialog = gtk_message_dialog_new(GTK_WINDOW(gtk_builder_get_object(p_builder, "window1")), flags, GTK_MESSAGE_INFO, GTK_BUTTONS_CLOSE, "Connexion avec le serveur de joueurs établie !\n\n Pour rafraîchir la liste de joueurs, veuillez cliquer sur le bouton [Se Connecter].", NULL);
+		gtk_dialog_run(GTK_DIALOG (dialog));
+
+		gtk_widget_destroy(dialog);
+		
+		msgConnect = 1;
+	}
+}
+
 /* Fonction affichant boite de dialogue si action impossible */
 void affiche_fenetre_action_impossible(void)
 {
@@ -744,6 +772,32 @@ void affiche_fenetre_action_impossible(void)
 	GtkDialogFlags flags = GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT;
 
 	dialog = gtk_message_dialog_new(GTK_WINDOW(gtk_builder_get_object(p_builder, "window1")), flags, GTK_MESSAGE_INFO, GTK_BUTTONS_CLOSE, "Action impossible.\n\n Veuillez sélectionner une case vide.", NULL);
+	gtk_dialog_run(GTK_DIALOG (dialog));
+
+	gtk_widget_destroy(dialog);
+}
+
+/* Fonction affichant boite de dialogue si tous les champs de connexion ne sont pas renseignes */
+void affiche_fenetre_connexion_impossible(void)
+{
+	GtkWidget *dialog;
+
+	GtkDialogFlags flags = GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT;
+
+	dialog = gtk_message_dialog_new(GTK_WINDOW(gtk_builder_get_object(p_builder, "window1")), flags, GTK_MESSAGE_INFO, GTK_BUTTONS_CLOSE, "Connexion au serveur de joueurs impossible.\n\n Veillez à bien renseigner tous les champs demandés.", NULL);
+	gtk_dialog_run(GTK_DIALOG (dialog));
+
+	gtk_widget_destroy(dialog);
+}
+
+/* Fonction affichant boite de dialogue si le joueur renseigne son propre port */
+void affiche_fenetre_demarrer_partie_impossible(void)
+{
+	GtkWidget *dialog;
+
+	GtkDialogFlags flags = GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT;
+
+	dialog = gtk_message_dialog_new(GTK_WINDOW(gtk_builder_get_object(p_builder, "window1")), flags, GTK_MESSAGE_INFO, GTK_BUTTONS_CLOSE, "Démarrage de la partie impossible...\n\n Vous devez renseigner un numéro de port différent du votre.", NULL);
 	gtk_dialog_run(GTK_DIALOG (dialog));
 
 	gtk_widget_destroy(dialog);
@@ -787,20 +841,12 @@ int confirm_game(void)
 /* Fonction appelee lors du clique du bouton Se connecter */
 static void clique_connect_serveur(GtkWidget *b)
 {
-	/***** TO DO *****/
-	printf("Clic connect serveur\n");
-	fflush(stdout);
-
 	char * portServer = lecture_port_serveur();
 	char * login = lecture_login();
-
-	printf("portServer = %s, login = %s\n", portServer, login);
-	fflush(stdout);
 
 	//we launch a thread that will just write to the client to comunicate our position to the oponent
 	pthread_t thread_connect_server_players;
 	int desc_thread_connect_server_players = pthread_create(&thread_connect_server_players, NULL, connect_server, 0);
-
 }
 
 /* Fonction desactivant bouton demarrer partie */
@@ -822,23 +868,29 @@ static void clique_connect_adversaire(GtkWidget *b)
 {
 	char* portToConnect = lecture_port_adversaire();
 
-	//lancer un modele_client et ecouter sur un pipe nomme pour la MAJ de l'interface
-	pid_t pid_client = fork();
-	if(pid_client != 0)
-	{
-		//I am the father
-		pidClient = (int) pid_client;
-	}
-	else
-	{
-		char portInChar[6]; 
-		sprintf(portInChar, "%d", port);
+	char portInChar[6]; 
+	sprintf(portInChar, "%d", port);
 
-		if (execlp("./client.o", "client.o", portToConnect, portInChar, "0", NULL)==-1)
+	if(strcmp(portInChar, portToConnect) == 0)
+	{
+		affiche_fenetre_demarrer_partie_impossible();
+	}
+	else{
+		//lancer un modele_client et ecouter sur un pipe nomme pour la MAJ de l'interface
+		pid_t pid_client = fork();
+		if(pid_client != 0)
 		{
-			printf("\nOthello : Execlp didn't work\n");
-			strerror(errno);
-			fflush(stdout);
+			//I am the father
+			pidClient = (int) pid_client;
+		}
+		else
+		{		
+			if (execlp("./client.o", "client.o", portToConnect, portInChar, "0", NULL)==-1)
+			{
+				printf("\nOthello : Execlp didn't work\n");
+				strerror(errno);
+				fflush(stdout);
+			}
 		}
 	}
 }
@@ -1522,9 +1574,7 @@ void * connect_server()
 	char message[100];
 	if (strcmp(lecture_addr_serveur(), "")==0 || strcmp(lecture_port_serveur(), "")==0 || strcmp(lecture_login(), "")==0)
 	{
-		//TODO add an error message on the interface
-		printf("a field is empty %s, %s, %s,\n", lecture_addr_serveur(), lecture_port_serveur(), lecture_login());
-		fflush(stdout);
+		affiche_fenetre_connexion_impossible();
 		return NULL;
 	}
 	strcpy(message, "c,");
@@ -1550,14 +1600,17 @@ void * connect_server()
 
 	printf("Message reçu : %s\n",buf);
 	fflush(stdout);
+	
+	// Cleaning the list on the interface
+	reset_liste_joueurs();
 
 	char* token = "";
 	char* entete = "";
 	token = strtok (buf,","); 
-	/*if (strcmp(token, "c")==0){*/
+
 	entete = token;
 	token = strtok(NULL, ",");
-	/*}*/
+
 	while (strcmp(token, "c")!=0)
 	{
 		char* ip = token;
@@ -1590,12 +1643,9 @@ void * connect_server()
 			strcpy(token, "");
 		}
 		
-		printf("entete = %s, ip = %s, port = %s, login = %s, token = %s\n",entete, ip, port, login,token);
-		fflush(stdout);
 		affich_joueur(login, ip, port);
 	}
 
-
-	/*close(sockfd);*/
+	affiche_connexion_etablie();
 }
 
