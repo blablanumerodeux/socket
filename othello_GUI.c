@@ -171,6 +171,9 @@ void * read_pipe_and_modify_gui();
 /*funtion that open the pipe and don't block the interface*/
 void * write_to_client();
 
+/*funtion that connect */
+void * connect_server();
+
 /*function to cast char to int*/
 int ctoi(char c);
 
@@ -281,14 +284,14 @@ void bold_label_player(int player){
 
 			gtk_label_set_markup(GTK_LABEL((GtkWidget *) gtk_builder_get_object (p_builder, "label_J2")), label_player);
 			gtk_label_set_markup(GTK_LABEL((GtkWidget *) gtk_builder_get_object (p_builder, "label_J1")), get_label_J1());
-		break;
+			break;
 		case 1:
 			strcat(label_player, get_label_J1());
 			strcat(label_player, "</b>");
-			
+
 			gtk_label_set_markup(GTK_LABEL((GtkWidget *) gtk_builder_get_object (p_builder, "label_J1")), label_player);
 			gtk_label_set_markup(GTK_LABEL((GtkWidget *) gtk_builder_get_object (p_builder, "label_J2")), get_label_J2());
-		break;
+			break;
 		case -1:
 			gtk_label_set_markup(GTK_LABEL((GtkWidget *) gtk_builder_get_object (p_builder, "label_J1")), get_label_J1());
 			gtk_label_set_markup(GTK_LABEL((GtkWidget *) gtk_builder_get_object (p_builder, "label_J2")), get_label_J2());
@@ -300,12 +303,12 @@ void bold_label_player(int player){
 void coord_to_indexes(const gchar *coord, int *col, int *lig)
 {
 	char *c;
-  
+
 	c=malloc(3*sizeof(char));
-  
+
 	c=strncpy(c, coord, 1);
 	c[1]='\0';
-  
+
 	if(strcmp(c, "A")==0)
 	{
 		*col=0;
@@ -393,11 +396,11 @@ void calcul_scores(){
 			switch(damier[i][j]){
 				case 0:
 					score_J1++;
-				break;
+					break;
 
 				case 1:
 					score_J2++;
-				break;								
+					break;								
 			}
 		}
 	}
@@ -564,7 +567,7 @@ static void coup_joueur(GtkWidget *p_case)
 	{
 		affiche_fenetre_action_impossible();
 	}
-   	else
+	else
 	{
 		nbCoup++;
 		change_img_case(col, lig, couleur);
@@ -589,28 +592,27 @@ static void coup_joueur(GtkWidget *p_case)
 		//we send the movement to the other player
 		char message[5];
 		strcpy(message, "c-");
-				
+
 		char position[5];
 		char ligInChar[2];
 		char colInChar[2];
-		
+
 		memset(position, 0, sizeof(position));
-		
+
 		sprintf(ligInChar, "%d", lig);
 		sprintf(colInChar, "%d", col);
 		strcat(position, colInChar);
 		strcat(position, ligInChar);
 		strcat(message, position);
-		
 		write(descGuiToClient, message, strlen(message));
-		
+
 		gele_damier();
 
 		int opponent_color = (couleur == 0) ? 1 : 0;
 		bold_label_player(opponent_color);
 	}
 
-	
+
 	// Fin de jeu
 	if(nbCoup == 32 || damier_complet() == 1)
 	{
@@ -786,8 +788,19 @@ int confirm_game(void)
 static void clique_connect_serveur(GtkWidget *b)
 {
 	/***** TO DO *****/
-	printf("\nClique connect serveur\n");
+	printf("Clic connect serveur\n");
 	fflush(stdout);
+
+	char * portServer = lecture_port_serveur();
+	char * login = lecture_login();
+
+	printf("portServer = %s, login = %s\n", portServer, login);
+	fflush(stdout);
+
+	//we launch a thread that will just write to the client to comunicate our position to the oponent
+	pthread_t thread_connect_server_players;
+	int desc_thread_connect_server_players = pthread_create(&thread_connect_server_players, NULL, connect_server, 0);
+
 }
 
 /* Fonction desactivant bouton demarrer partie */
@@ -817,7 +830,7 @@ static void clique_connect_adversaire(GtkWidget *b)
 		pidClient = (int) pid_client;
 	}
 	else
-       	{
+	{
 		char portInChar[6]; 
 		sprintf(portInChar, "%d", port);
 
@@ -1148,17 +1161,17 @@ int main (int argc, char ** argv)
 
 			//here we create the two pipes we need to communicate between the gui the client and the server
 			char serverToGui[] = "serverToGui.fifo";
-                        if(mkfifo(serverToGui, S_IRUSR | S_IWUSR ) != 0)  
-                        {
-                                fprintf(stderr, "Impossible de créer le tube nommé.\n");
-                                exit(EXIT_FAILURE);
-                        }
+			if(mkfifo(serverToGui, S_IRUSR | S_IWUSR ) != 0)  
+			{
+				fprintf(stderr, "Impossible de créer le tube nommé.\n");
+				exit(EXIT_FAILURE);
+			}
 
 			char guiToClient[] = "guiToClient.fifo";
-                        if(mkfifo(guiToClient, S_IRUSR | S_IWUSR ) != 0)  
-                        {
-                                fprintf(stderr, "Impossible de créer le tube nommé.\n");
-                                exit(EXIT_FAILURE);
+			if(mkfifo(guiToClient, S_IRUSR | S_IWUSR ) != 0)  
+			{
+				fprintf(stderr, "Impossible de créer le tube nommé.\n");
+				exit(EXIT_FAILURE);
 			}
 
 			pid_t pid_serv = fork();
@@ -1223,7 +1236,6 @@ void * read_pipe_and_modify_gui()
 		}else if(nbBRead > 0)
 		{
 			stringToRead[nbBRead] = '\0';
-		
 			// message treatment
 			// A header is contained in the message as follow :
 			// j-XX means that the message is about the identity of the player (J1 or J2)
@@ -1232,9 +1244,9 @@ void * read_pipe_and_modify_gui()
 			// Split the received string to separate header and content			
 			char* token = strtok (stringToRead,"-");	
 			char* header = token;
-			token = strtok(NULL, stringToRead);
+			token = strtok(NULL, "-");
 			char* content = token;
-			token = strtok(NULL, stringToRead);
+			token = strtok(NULL, "-");
 
 			if(strcmp(header, "j") == 0){
 
@@ -1280,23 +1292,21 @@ void * read_pipe_and_modify_gui()
 				}
 			}
 			else if(strcmp(header, "c") == 0){
-				
 				// traduction of the position
 				char coord[2];
 				int col, lig;
 				int opponent_color = (couleur == 0) ? 1 : 0;
-				
+
 				col = ctoi(content[0]);
 				lig = ctoi(content[1]);
-				
 				// interpretation of the position
 				indexes_to_coord(col, lig, coord);
-				
+
 				printf("Opponent add piece to : %s\n", coord);
 				fflush(stdout);
 
 				change_img_case(col, lig, opponent_color);
-				
+
 				// Appel des fonctions d'encadrement
 				encadrement_D_G(col, lig, opponent_color);
 				encadrement_G_D(col, lig, opponent_color);
@@ -1399,12 +1409,11 @@ static void close_game()
 		printf("GUI : Pipes closed.\n");
 		fflush(stdout);
 	}
-	
 	/********************* Killing process *************************/
 
 	printf("GUI : Killing process...\n");
 	fflush(stdout);
-	
+
 	int status = 0;
 	pid_t w;
 	int resk;
@@ -1460,3 +1469,133 @@ static void close_game()
 	
 	gtk_main_quit();
 }
+
+
+void * connect_server()
+{
+	char* SERVEUR = "127.0.0.1";
+	char* PORTS = "2058";
+
+	int sockfd, new_fd, rv, sin_size, numbytes;
+	struct addrinfo hints, *servinfo, *p;
+	struct sockaddr their_adr;
+	char buf[100];
+
+	memset(&hints, 0, sizeof(hints));
+	hints.ai_family = AF_UNSPEC;
+	hints.ai_socktype = SOCK_STREAM;
+	rv = getaddrinfo(SERVEUR, PORTS, &hints, &servinfo);
+
+	if(rv != 0)
+	{
+		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
+		exit(0);
+	}
+
+	// Création  socket  et  attachement
+	for(p = servinfo; p != NULL; p = p->ai_next) 
+	{
+		if((sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) 
+		{   
+			perror("client: socket");
+			continue;
+		}   
+		if((connect(sockfd, p->ai_addr, p->ai_addrlen) == -1))
+		{   
+			close(sockfd);
+			perror("client: connect");
+			continue;
+		}   
+
+		break;
+	}
+
+	if(p == NULL)
+	{
+		fprintf(stderr, "server: failed to bind\n");
+		exit(0);
+	}
+
+	freeaddrinfo(servinfo);       // Libère structure
+
+	//we send our ip, port and login
+	char message[100];
+	if (strcmp(lecture_addr_serveur(), "")==0 || strcmp(lecture_port_serveur(), "")==0 || strcmp(lecture_login(), "")==0)
+	{
+		//TODO add an error message on the interface
+		printf("a field is empty %s, %s, %s,\n", lecture_addr_serveur(), lecture_port_serveur(), lecture_login());
+		fflush(stdout);
+		return NULL;
+	}
+	strcpy(message, "c,");
+	strcat(message, lecture_addr_serveur());
+	strcat(message, ",");
+	strcat(message, lecture_port_serveur());
+	strcat(message, ",");
+	strcat(message, lecture_login());
+	strcat(message, ",");
+	send(sockfd, message, strlen(message), 0);
+
+	printf("waiting for an answer from the server \n");
+	fflush(stdout);
+
+	//and we recv the list of all the players
+	//we normaly have to do a while loop
+	if((numbytes = recv(sockfd, buf, 100-1, 0)) == -1) 
+	{
+		perror("recv");
+		exit(1);
+	}
+	buf[numbytes] = '\0';
+
+	printf("Message reçu : %s\n",buf);
+	fflush(stdout);
+
+	char* token = "";
+	char* entete = "";
+	token = strtok (buf,","); 
+	/*if (strcmp(token, "c")==0){*/
+	entete = token;
+	token = strtok(NULL, ",");
+	/*}*/
+	while (strcmp(token, "c")!=0)
+	{
+		char* ip = token;
+		token = strtok(NULL, ",");
+		char* port = token;
+		token = strtok(NULL, ",");
+		char* login = token;
+		token = strtok(NULL, ",");
+
+		//verify that the token is not null 
+		//if he is so malloc
+		if (ip==NULL)
+		{
+			ip = (char*)malloc(sizeof(char*));
+			strcpy(ip, "");
+		}
+		if (port==NULL)
+		{
+			port = (char*)malloc(sizeof(char*));
+			strcpy(port, "");
+		}
+		if (login==NULL)
+		{
+			login = (char*)malloc(sizeof(char*));
+			strcpy(login, "");
+		}
+		if (token==NULL)
+		{
+			token = (char*)malloc(sizeof(char*));
+			strcpy(token, "");
+		}
+		
+		printf("entete = %s, ip = %s, port = %s, login = %s, token = %s\n",entete, ip, port, login,token);
+		fflush(stdout);
+		affich_joueur(login, ip, port);
+	}
+
+
+	/*close(sockfd);*/
+}
+
